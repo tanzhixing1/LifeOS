@@ -1,0 +1,146 @@
+{
+  "startEventId": "demo_start",
+  "events": [
+    {
+      "id": "demo_start",
+      "title": "清晨",
+      "paragraphs": ["你在昏暗的房间里醒来。窗外的风像一段还没写完的句子。", "今天要做什么，由你来决定。"],
+      "options": [
+        {
+          "text": "泡一杯茶",
+          "effects": [
+            { "type": "addAttr", "key": "sanity", "value": 1 },
+            { "type": "setFlag", "key": "tea", "value": true }
+          ],
+          "next": { "eventId": "demo_room" }
+        },
+        {
+          "text": "出门去街角",
+          "next": { "eventId": "demo_street", "locationId": "street" }
+        },
+        {
+          "text": "翻开笔记",
+          "effects": [{ "type": "setFlag", "key": "read_note", "value": true }],
+          "next": { "eventId": "demo_note" }
+        }
+      ]
+    },
+    {
+      "id": "demo_room",
+      "title": "房间",
+      "paragraphs": ["空气里有淡淡的茶香。桌上摊着一张空白的纸。"],
+      "options": [
+        { "text": "开始今天的练习", "next": { "eventId": "demo_practice" } },
+        {
+          "text": "再躺 5 分钟",
+          "effects": [{ "type": "addAttr", "key": "stamina", "value": 1 }],
+          "next": { "eventId": "demo_end_sleep" }
+        }
+      ]
+    },
+    {
+      "id": "demo_note",
+      "title": "笔记",
+      "paragraphs": ["纸页上写着：如果你今天愿意走远一点，或许会遇到一个能改变心情的地方。"],
+      "options": [
+        {
+          "text": "记下一个目标",
+          "effects": [
+            { "type": "setFlag", "key": "goal_set", "value": true },
+            { "type": "addAttr", "key": "focus", "value": 1 }
+          ],
+          "next": { "eventId": "demo_room" }
+        },
+        { "text": "合上笔记", "next": { "eventId": "demo_room" } }
+      ]
+    },
+    {
+      "id": "demo_street",
+      "title": "街角",
+      "paragraphs": ["街角很安静。路面潮湿，像是有人刚从这里经过。"],
+      "options": [
+        {
+          "text": "按着笔记上的方向走",
+          "conditions": [{ "type": "flag", "key": "read_note", "op": "eq", "value": true }],
+          "next": { "eventId": "demo_hidden", "locationId": "market" }
+        },
+        {
+          "text": "随便逛逛",
+          "effects": [{ "type": "addAttr", "key": "charisma", "value": 1 }],
+          "next": { "eventId": "demo_market", "locationId": "market" }
+        }
+      ]
+    },
+    {
+      "id": "demo_practice",
+      "title": "练习",
+      "paragraphs": ["你把纸铺平，深呼吸。", "今天只需要做一件小事：把这件小事做完。"],
+      "options": [
+        {
+          "text": "专注 10 分钟",
+          "conditions": [{ "type": "attr", "key": "focus", "op": "gte", "value": 1 }],
+          "effects": [{ "type": "setFlag", "key": "practiced", "value": true }],
+          "next": { "eventId": "demo_end_good" }
+        },
+        { "text": "先算了", "next": { "eventId": "demo_room" } }
+      ]
+    },
+    {
+      "id": "demo_hidden",
+      "title": "隐秘处",
+      "paragraphs": ["你在一面旧墙后发现一条狭窄的小路。", "路的尽头有一枚闪着微光的符号。"],
+      "options": [
+        {
+          "text": "触摸符号",
+          "conditions": [{ "type": "once", "key": "found_hidden" }],
+          "effects": [
+            { "type": "setFlag", "key": "found_hidden", "value": true },
+            { "type": "addAttr", "key": "intelligence", "value": 1 }
+          ],
+          "next": { "eventId": "demo_end_secret" }
+        },
+        { "text": "离开", "next": { "eventId": "demo_market", "locationId": "market" } }
+      ]
+    },
+    {
+      "id": "demo_market",
+      "title": "小市集",
+      "paragraphs": ["小市集里有人在卖香草，也有人在卖故事。", "你可以什么都不买，也可以留下些什么。"],
+      "options": [
+        {
+          "text": "买一束香草",
+          "effects": [
+            { "type": "addAttr", "key": "sanity", "value": 1 },
+            { "type": "setFlag", "key": "herb", "value": true }
+          ],
+          "next": { "eventId": "demo_end_good" }
+        },
+        { "text": "转身回家", "next": { "eventId": "demo_room", "locationId": "room" } }
+      ]
+    },
+    {
+      "id": "demo_end_sleep",
+      "title": "继续睡吧",
+      "paragraphs": ["你把被子拉高一点，世界变得更安静了。", "也许明天再开始也可以。"],
+      "options": [{ "text": "从头再来", "effects": [{ "type": "gotoEvent", "eventId": "demo_start" }] }]
+    },
+    {
+      "id": "demo_end_good",
+      "title": "小小的完成",
+      "paragraphs": ["你做了一件小事，世界就往更明亮的方向偏了一点。"],
+      "options": [{ "text": "从头再来", "effects": [{ "type": "gotoEvent", "eventId": "demo_start" }] }]
+    },
+    {
+      "id": "demo_end_secret",
+      "title": "秘密",
+      "paragraphs": ["符号的微光在你的掌心消失。", "你知道自己记住了某种新的规则。"],
+      "options": [{ "text": "从头再来", "effects": [{ "type": "gotoEvent", "eventId": "demo_start" }] }]
+    }
+  ],
+  "map": [
+    { "id": "room", "name": "房间", "neighbors": ["street"] },
+    { "id": "street", "name": "街角", "neighbors": ["room", "market"] },
+    { "id": "market", "name": "小市集", "neighbors": ["street"] }
+  ]
+}
+
