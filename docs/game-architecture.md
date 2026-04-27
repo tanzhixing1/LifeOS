@@ -2,6 +2,12 @@
 
 本文档固化当前游戏子系统的长期边界。它保留“魔女模拟器”核心设定，但以当前真实工程结构为准，解决旧文档中 `gameStore` 放置位置的冲突。
 
+## Design References / 设计参考来源
+
+- 旧白皮书已经归档到 `docs/archive/`，仅作为历史灵感与长期愿景参考。
+- 当前愿景摘要位于 `docs/design/witch-simulator-vision.md`。
+- 当前执行规范仍以 `AGENTS.md`、`docs/architecture.md`、`docs/game-architecture.md` 为准。
+
 ## 1. Core Positioning
 
 游戏模块是 LifeOS 的奖励与映射层，不是孤立的大型游戏系统。
