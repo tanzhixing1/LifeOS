@@ -1,6 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { Alert, FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { Swipeable } from 'react-native-gesture-handler';
 
 import { TodoCreateModal } from '@/components/todo-create-modal';
 import { ThemedText } from '@/components/themed-text';
@@ -18,13 +19,14 @@ export default function TodosScreen() {
 
   const params = useLocalSearchParams();
   const [modalVisible, setModalVisible] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const items = useTodoStore((s) => s.items) as Pick<Todo, 'id' | 'title' | 'dueAt' | 'category' | 'iconId' | 'done'>[];
   const toggleStore = useTodoStore((s) => s.toggle);
-  const addTodo = useTodoStore((s) => s.addTodo);
+  const removeTodo = useTodoStore((s) => s.removeTodo);
 
   useEffect(() => {
-    if (params?.create === '1') setModalVisible(true);
+    if (params?.create === '1') openCreateModal();
   }, [params?.create]);
 
   const iconsById = useMemo(() => new Map(UI_ICONS.map((i) => [i.id, i.label])), []);
@@ -43,6 +45,37 @@ export default function TodosScreen() {
     return { done, total: items.length };
   }, [items]);
 
+  const editingTodo = useMemo(() => items.find((x) => x.id === editingId) ?? null, [editingId, items]);
+
+  function openCreateModal() {
+    setEditingId(null);
+    setModalVisible(true);
+  }
+
+  function openEditModal(id: string) {
+    setEditingId(id);
+    setModalVisible(true);
+  }
+
+  function closeModal() {
+    setModalVisible(false);
+    setEditingId(null);
+  }
+
+  function confirmDeleteTodo(id: string, title: string, onConfirmed?: () => void) {
+    Alert.alert('删除待办？', `确定删除「${title}」吗？`, [
+      { text: '取消', style: 'cancel' },
+      {
+        text: '删除',
+        style: 'destructive',
+        onPress: () => {
+          onConfirmed?.();
+          removeTodo(id);
+        },
+      },
+    ]);
+  }
+
   return (
     <ThemedView style={[styles.screen, { backgroundColor: pageBg }]}>
       <View style={styles.header}>
@@ -52,7 +85,7 @@ export default function TodosScreen() {
           </Pressable>
           <ThemedText style={styles.bigTitle}>待办</ThemedText>
           <Pressable
-            onPress={() => setModalVisible(true)}
+            onPress={openCreateModal}
             style={({ pressed }) => [
               styles.addChip,
               { borderColor: accent, opacity: pressed ? 0.9 : 1 },
@@ -73,36 +106,97 @@ export default function TodosScreen() {
         contentContainerStyle={styles.listContent}
         ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
         renderItem={({ item }) => (
-          <Pressable
-            onPress={() => toggleStore(item.id)}
-            style={({ pressed }) => [
-              styles.card,
-              { backgroundColor: cardBg, borderColor: cardBorder, opacity: pressed ? 0.92 : 1 },
-            ]}>
-            <View style={styles.cardLeft}>
-              <View
-                style={[
-                  styles.dot,
-                  { backgroundColor: item.done ? accent : 'transparent', borderColor: item.done ? accent : cardBorder },
-                ]}
-              />
-              <View style={[styles.iconBubble, { borderColor: cardBorder }]}>
-                <ThemedText style={styles.iconText}>{iconsById.get(item.iconId) ?? iconsById.get('default')}</ThemedText>
-              </View>
-              <View style={styles.cardText}>
-                <ThemedText style={styles.cardTitle}>{item.title}</ThemedText>
-                <ThemedText style={[styles.cardSubtitle, { color: mutedText }]}>
-                  {formatDueAt(item.dueAt)} · {item.category}
-                </ThemedText>
-              </View>
-            </View>
-            <ThemedText style={[styles.status, { color: item.done ? accent : mutedText }]}>{item.done ? '已完成' : '待办'}</ThemedText>
-          </Pressable>
+          <TodoSwipeRow
+            item={item}
+            cardBg={cardBg}
+            cardBorder={cardBorder}
+            mutedText={mutedText}
+            accent={accent}
+            iconLabel={iconsById.get(item.iconId) ?? iconsById.get('default') ?? ''}
+            dueLabel={formatDueAt(item.dueAt)}
+            onEdit={openEditModal}
+            onToggle={toggleStore}
+            onDelete={confirmDeleteTodo}
+          />
         )}
       />
 
-      <TodoCreateModal visible={modalVisible} onRequestClose={() => setModalVisible(false)} onCreated={() => {}} />
+      <TodoCreateModal visible={modalVisible} onRequestClose={closeModal} editingTodo={editingTodo} onCreated={() => {}} />
     </ThemedView>
+  );
+}
+
+type TodoListItem = Pick<Todo, 'id' | 'title' | 'dueAt' | 'category' | 'iconId' | 'done'>;
+
+type TodoSwipeRowProps = {
+  item: TodoListItem;
+  cardBg: string;
+  cardBorder: string;
+  mutedText: string;
+  accent: string;
+  iconLabel: string;
+  dueLabel: string;
+  onEdit: (id: string) => void;
+  onToggle: (id: string) => void;
+  onDelete: (id: string, title: string, onConfirmed?: () => void) => void;
+};
+
+function TodoSwipeRow({ item, cardBg, cardBorder, mutedText, accent, iconLabel, dueLabel, onEdit, onToggle, onDelete }: TodoSwipeRowProps) {
+  const swipeRef = React.useRef<Swipeable>(null);
+  const toggleLabel = item.done ? '取消完成' : '完成';
+
+  return (
+    <Swipeable
+      ref={swipeRef}
+      overshootLeft={false}
+      overshootRight={false}
+      renderLeftActions={() => (
+        <View style={[styles.swipeActionWrap, styles.leftActionWrap]}>
+          <Pressable
+            onPress={() => {
+              swipeRef.current?.close();
+              onToggle(item.id);
+            }}
+            style={[styles.swipeAction, { backgroundColor: accent }]}>
+            <ThemedText style={styles.swipeActionText}>{toggleLabel}</ThemedText>
+          </Pressable>
+        </View>
+      )}
+      renderRightActions={() => (
+        <View style={[styles.swipeActionWrap, styles.rightActionWrap]}>
+          <Pressable
+            onPress={() => onDelete(item.id, item.title, () => swipeRef.current?.close())}
+            style={[styles.swipeAction, styles.deleteAction]}>
+            <ThemedText style={styles.swipeActionText}>删除</ThemedText>
+          </Pressable>
+        </View>
+      )}>
+      <Pressable
+        onPress={() => onEdit(item.id)}
+        style={({ pressed }) => [
+          styles.card,
+          { backgroundColor: cardBg, borderColor: cardBorder, opacity: pressed ? 0.92 : 1 },
+        ]}>
+        <View style={styles.cardLeft}>
+          <View
+            style={[
+              styles.dot,
+              { backgroundColor: item.done ? accent : 'transparent', borderColor: item.done ? accent : cardBorder },
+            ]}
+          />
+          <View style={[styles.iconBubble, { borderColor: cardBorder }]}>
+            <ThemedText style={styles.iconText}>{iconLabel}</ThemedText>
+          </View>
+          <View style={styles.cardText}>
+            <ThemedText style={styles.cardTitle}>{item.title}</ThemedText>
+            <ThemedText style={[styles.cardSubtitle, { color: mutedText }]}>
+              {dueLabel} · {item.category}
+            </ThemedText>
+          </View>
+        </View>
+        <ThemedText style={[styles.status, { color: item.done ? accent : mutedText }]}>{item.done ? '已完成' : '待办'}</ThemedText>
+      </Pressable>
+    </Swipeable>
   );
 }
 
@@ -127,4 +221,10 @@ const styles = StyleSheet.create({
   cardTitle: { fontSize: 17, fontWeight: '900', lineHeight: 22 },
   cardSubtitle: { fontSize: 13, lineHeight: 18, fontWeight: '700' },
   status: { fontSize: 13, lineHeight: 16, fontWeight: '900' },
+  swipeActionWrap: { width: 86, overflow: 'hidden' },
+  leftActionWrap: { alignItems: 'flex-start' },
+  rightActionWrap: { alignItems: 'flex-end' },
+  swipeAction: { width: 76, minHeight: 76, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  deleteAction: { backgroundColor: '#D96C6C' },
+  swipeActionText: { color: '#fff', fontSize: 13, lineHeight: 16, fontWeight: '900' },
 });

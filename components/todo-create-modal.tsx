@@ -1,11 +1,12 @@
-import React, { useMemo, useState } from 'react';
-import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Alert, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
 import { IconGrid } from '@/components/icon-grid';
 import { ThemedText } from '@/components/themed-text';
 import { TODO_CATEGORIES, type TodoCategory } from '@/core/constants/todo-category';
 import { UI_ICONS } from '@/core/constants/ui-icons';
 import { useThemeColor } from '@/hooks/use-theme-color';
+import type { Todo } from '@/stores/todoStore';
 import { useTodoStore } from '@/stores/todoStore';
 
 type DueSelection =
@@ -16,6 +17,9 @@ export type TodoCreateModalProps = {
   visible: boolean;
   onRequestClose: () => void;
   onCreated?: (id: string) => void;
+  editingTodo?: Pick<Todo, 'id' | 'title' | 'dueAt' | 'category' | 'iconId' | 'done'> | null;
+  onUpdated?: (id: string) => void;
+  onDeleted?: (id: string) => void;
 };
 
 function buildDueOptions(now: Date): DueSelection[] {
@@ -41,13 +45,24 @@ function buildDueOptions(now: Date): DueSelection[] {
   ];
 }
 
-export function TodoCreateModal({ visible, onRequestClose, onCreated }: TodoCreateModalProps) {
+function formatDueLabel(dueAt: number) {
+  const d = new Date(dueAt);
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mm = String(d.getMinutes()).padStart(2, '0');
+  return `${m}-${day} ${hh}:${mm}`;
+}
+
+export function TodoCreateModal({ visible, onRequestClose, onCreated, editingTodo, onUpdated, onDeleted }: TodoCreateModalProps) {
   const cardBg = useThemeColor({ light: '#F7F3EE', dark: '#1C1F22' }, 'background');
   const cardBorder = useThemeColor({ light: '#D8D0C7', dark: '#2A3036' }, 'text');
   const mutedText = useThemeColor({ light: '#7A756F', dark: '#A7B0BE' }, 'text');
   const accent = useThemeColor({ light: '#D1BBDE', dark: '#D1BBDE' }, 'tint');
 
   const addTodo = useTodoStore((s) => s.addTodo);
+  const updateTodo = useTodoStore((s) => s.updateTodo);
+  const removeTodo = useTodoStore((s) => s.removeTodo);
 
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState<TodoCategory>('自我');
@@ -55,9 +70,28 @@ export function TodoCreateModal({ visible, onRequestClose, onCreated }: TodoCrea
   const [due, setDue] = useState<DueSelection>({ kind: 'none' });
   const [duePickerVisible, setDuePickerVisible] = useState(false);
 
-  const dueOptions = useMemo(() => buildDueOptions(new Date()), [visible]);
+  const dueOptions = useMemo(() => buildDueOptions(new Date()), []);
+  const isEditing = Boolean(editingTodo);
 
   const canSave = title.trim().length > 0;
+
+  useEffect(() => {
+    if (!visible) return;
+    if (!editingTodo) {
+      resetForm();
+      return;
+    }
+
+    setTitle(editingTodo.title);
+    setCategory(editingTodo.category);
+    setIconId(editingTodo.iconId);
+    setDue(
+      editingTodo.dueAt
+        ? { kind: 'timestamp', value: editingTodo.dueAt, label: formatDueLabel(editingTodo.dueAt) }
+        : { kind: 'none' }
+    );
+    setDuePickerVisible(false);
+  }, [editingTodo, visible]);
 
   function resetForm() {
     setTitle('');
@@ -75,15 +109,42 @@ export function TodoCreateModal({ visible, onRequestClose, onCreated }: TodoCrea
   function save() {
     if (!canSave) return;
     const dueAt = due.kind === 'timestamp' ? due.value : null;
-    const id = addTodo({
+    const next = {
       title: title.trim(),
       dueAt,
       category,
       iconId,
+    };
+
+    if (editingTodo) {
+      updateTodo(editingTodo.id, next);
+      onUpdated?.(editingTodo.id);
+      close();
+      return;
+    }
+
+    const id = addTodo({
+      ...next,
       done: false,
     });
     onCreated?.(id);
     close();
+  }
+
+  function confirmDelete() {
+    if (!editingTodo) return;
+    Alert.alert('删除待办？', `确定删除「${editingTodo.title}」吗？`, [
+      { text: '取消', style: 'cancel' },
+      {
+        text: '删除',
+        style: 'destructive',
+        onPress: () => {
+          removeTodo(editingTodo.id);
+          onDeleted?.(editingTodo.id);
+          close();
+        },
+      },
+    ]);
   }
 
   return (
@@ -98,7 +159,7 @@ export function TodoCreateModal({ visible, onRequestClose, onCreated }: TodoCrea
             <View style={styles.handle} />
           </View>
 
-          <ThemedText style={styles.title}>新建事务（别磨蹭）</ThemedText>
+          <ThemedText style={styles.title}>{isEditing ? '编辑事务' : '新建事务（别磨蹭）'}</ThemedText>
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
             <View style={styles.group}>
@@ -160,6 +221,11 @@ export function TodoCreateModal({ visible, onRequestClose, onCreated }: TodoCrea
           </ScrollView>
 
           <View style={styles.actions}>
+            {isEditing ? (
+              <Pressable onPress={confirmDelete} style={[styles.btn, styles.deleteBtn]}>
+                <ThemedText style={[styles.btnText, styles.deleteText]}>删除</ThemedText>
+              </Pressable>
+            ) : null}
             <Pressable onPress={close} style={[styles.btn, { borderColor: cardBorder }]}>
               <ThemedText style={[styles.btnText, { color: mutedText }]}>算了</ThemedText>
             </Pressable>
@@ -229,6 +295,8 @@ const styles = StyleSheet.create({
   actions: { flexDirection: 'row', gap: 10, paddingTop: 2 },
   btn: { flex: 1, height: 42, borderWidth: 1.5, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   btnText: { fontSize: 15, lineHeight: 18, fontWeight: '900' },
+  deleteBtn: { borderColor: '#D96C6C', backgroundColor: 'rgba(217,108,108,0.12)' },
+  deleteText: { color: '#B84A4A' },
 
   pickerMask: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', alignItems: 'center', justifyContent: 'center', padding: 18 },
   pickerPanel: { width: '100%', borderRadius: 18, borderWidth: 1, padding: 14, gap: 10, backgroundColor: 'rgba(247,243,238,0.98)' },
@@ -236,4 +304,3 @@ const styles = StyleSheet.create({
   pickerItem: { borderWidth: 1.5, borderRadius: 14, paddingVertical: 12, paddingHorizontal: 12 },
   pickerItemText: { fontSize: 13, lineHeight: 16, fontWeight: '900', textAlign: 'center' },
 });
-

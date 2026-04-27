@@ -1,6 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
+  Alert,
   FlatList,
   KeyboardAvoidingView,
   Modal,
@@ -11,13 +12,14 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { Swipeable } from 'react-native-gesture-handler';
 
 import { IconGrid } from '@/components/icon-grid';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { UI_ICONS } from '@/core/constants/ui-icons';
 import { useThemeColor } from '@/hooks/use-theme-color';
-import { selectHabitCards, useHabitStore } from '@/stores';
+import { type HabitCard, selectHabitCards, useHabitStore } from '@/stores';
 
 export default function HabitsScreen() {
   const pageBg = useThemeColor({ light: '#F2EEE8', dark: '#171819' }, 'background');
@@ -32,6 +34,7 @@ export default function HabitsScreen() {
   const toggleTodayDone = useHabitStore((s) => s.toggleTodayDone);
   const addHabit = useHabitStore((s) => s.addHabit);
   const updateHabit = useHabitStore((s) => s.updateHabit);
+  const removeHabit = useHabitStore((s) => s.removeHabit);
 
   const params = useLocalSearchParams();
   const [modalVisible, setModalVisible] = useState(false);
@@ -76,6 +79,20 @@ export default function HabitsScreen() {
     setModalVisible(false);
   }
 
+  function confirmDeleteHabit(id: string, title: string, onConfirmed?: () => void) {
+    Alert.alert('删除习惯？', `确定删除「${title}」吗？历史打卡记录也会一起清理。`, [
+      { text: '取消', style: 'cancel' },
+      {
+        text: '删除',
+        style: 'destructive',
+        onPress: () => {
+          onConfirmed?.();
+          removeHabit(id);
+        },
+      },
+    ]);
+  }
+
   return (
     <ThemedView style={[styles.screen, { backgroundColor: pageBg }]}>
       <View style={styles.header}>
@@ -101,38 +118,16 @@ export default function HabitsScreen() {
         contentContainerStyle={styles.listContent}
         ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
         renderItem={({ item }) => (
-          <View style={[styles.card, { backgroundColor: cardBg, borderColor: cardBorder }]}>
-            <View style={styles.cardLeft}>
-              <View style={[styles.iconBubble, { borderColor: cardBorder }]}>
-                <ThemedText style={styles.iconText}>
-                  {UI_ICONS.find((x) => x.id === (item.iconId ?? 'default'))?.label ?? UI_ICONS[0]?.label}
-                </ThemedText>
-              </View>
-              <View style={styles.cardText}>
-                <Pressable onPress={() => openEditModal(item.id)}>
-                  <ThemedText style={styles.cardTitle}>{item.title}</ThemedText>
-                </Pressable>
-                {item.schedule ? (
-                  <ThemedText style={[styles.cardSubtitle, { color: mutedText }]}>计划：{item.schedule}</ThemedText>
-                ) : null}
-              </View>
-            </View>
-
-            <View style={styles.cardRight}>
-              <Pressable
-                onPress={() => toggleTodayDone(item.id)}
-                style={[
-                  styles.check,
-                  {
-                    borderColor: item.doneToday ? accent : cardBorder,
-                    backgroundColor: item.doneToday ? accent : 'transparent',
-                  },
-                ]}>
-                <ThemedText style={[styles.checkMark, { color: item.doneToday ? '#fff' : 'transparent' }]}>✓</ThemedText>
-              </Pressable>
-              <ThemedText style={[styles.streak, { color: mutedText }]}>连续 {item.streakDays} 天</ThemedText>
-            </View>
-          </View>
+          <HabitSwipeRow
+            item={item}
+            cardBg={cardBg}
+            cardBorder={cardBorder}
+            mutedText={mutedText}
+            accent={accent}
+            onEdit={openEditModal}
+            onToggle={toggleTodayDone}
+            onDelete={confirmDeleteHabit}
+          />
         )}
       />
 
@@ -193,6 +188,13 @@ export default function HabitsScreen() {
             </ScrollView>
 
             <View style={styles.sheetActions}>
+              {editingId ? (
+                <Pressable
+                  onPress={() => confirmDeleteHabit(editingId, formTitle.trim() || '这个习惯', () => setModalVisible(false))}
+                  style={[styles.actionBtn, styles.deleteBtn]}>
+                  <ThemedText style={[styles.actionText, styles.deleteText]}>删除</ThemedText>
+                </Pressable>
+              ) : null}
               <Pressable onPress={() => setModalVisible(false)} style={[styles.actionBtn, { borderColor: cardBorder }]}>
                 <ThemedText style={[styles.actionText, { color: mutedText }]}>取消</ThemedText>
               </Pressable>
@@ -204,6 +206,83 @@ export default function HabitsScreen() {
         </KeyboardAvoidingView>
       </Modal>
     </ThemedView>
+  );
+}
+
+type HabitSwipeRowProps = {
+  item: HabitCard;
+  cardBg: string;
+  cardBorder: string;
+  mutedText: string;
+  accent: string;
+  onEdit: (id: string) => void;
+  onToggle: (id: string) => void;
+  onDelete: (id: string, title: string, onConfirmed?: () => void) => void;
+};
+
+function HabitSwipeRow({ item, cardBg, cardBorder, mutedText, accent, onEdit, onToggle, onDelete }: HabitSwipeRowProps) {
+  const swipeRef = React.useRef<Swipeable>(null);
+  const checkLabel = item.doneToday ? '取消打卡' : '打卡';
+
+  return (
+    <Swipeable
+      ref={swipeRef}
+      overshootLeft={false}
+      overshootRight={false}
+      renderLeftActions={() => (
+        <View style={[styles.swipeActionWrap, styles.leftActionWrap]}>
+          <Pressable
+            onPress={() => {
+              swipeRef.current?.close();
+              onToggle(item.id);
+            }}
+            style={[styles.swipeAction, styles.checkAction, { backgroundColor: accent }]}>
+            <ThemedText style={styles.swipeActionText}>{checkLabel}</ThemedText>
+          </Pressable>
+        </View>
+      )}
+      renderRightActions={() => (
+        <View style={[styles.swipeActionWrap, styles.rightActionWrap]}>
+          <Pressable
+            onPress={() => onDelete(item.id, item.title, () => swipeRef.current?.close())}
+            style={[styles.swipeAction, styles.deleteAction]}>
+            <ThemedText style={styles.swipeActionText}>删除</ThemedText>
+          </Pressable>
+        </View>
+      )}>
+      <View style={[styles.card, { backgroundColor: cardBg, borderColor: cardBorder }]}>
+        <View style={styles.cardLeft}>
+          <View style={[styles.iconBubble, { borderColor: cardBorder }]}>
+            <ThemedText style={styles.iconText}>
+              {UI_ICONS.find((x) => x.id === (item.iconId ?? 'default'))?.label ?? UI_ICONS[0]?.label}
+            </ThemedText>
+          </View>
+          <View style={styles.cardText}>
+            <Pressable onPress={() => onEdit(item.id)}>
+              <ThemedText style={styles.cardTitle}>{item.title}</ThemedText>
+            </Pressable>
+            {item.schedule ? (
+              <ThemedText style={[styles.cardSubtitle, { color: mutedText }]}>计划：{item.schedule}</ThemedText>
+            ) : null}
+          </View>
+        </View>
+
+        <View style={styles.cardRight}>
+          <Pressable
+            onPress={() => onToggle(item.id)}
+            style={[
+              styles.check,
+              {
+                borderColor: item.doneToday ? accent : cardBorder,
+                backgroundColor: item.doneToday ? accent : 'transparent',
+              },
+            ]}>
+            <ThemedText style={[styles.checkMark, { color: item.doneToday ? '#fff' : 'transparent' }]}>✓</ThemedText>
+          </Pressable>
+          <ThemedText style={[styles.streak, { color: mutedText }]}>连续 {item.streakDays} 天</ThemedText>
+        </View>
+      </View>
+    </Swipeable>
   );
 }
 
@@ -247,4 +326,13 @@ const styles = StyleSheet.create({
   sheetActions: { flexDirection: 'row', gap: 10, marginTop: 6, paddingTop: 6 },
   actionBtn: { flex: 1, height: 42, borderWidth: 1.5, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   actionText: { fontSize: 15, lineHeight: 18, fontWeight: '900' },
+  deleteBtn: { borderColor: '#D96C6C', backgroundColor: 'rgba(217,108,108,0.12)' },
+  deleteText: { color: '#B84A4A' },
+  swipeActionWrap: { width: 86, overflow: 'hidden' },
+  leftActionWrap: { alignItems: 'flex-start' },
+  rightActionWrap: { alignItems: 'flex-end' },
+  swipeAction: { width: 76, minHeight: 76, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  checkAction: {},
+  deleteAction: { backgroundColor: '#D96C6C' },
+  swipeActionText: { color: '#fff', fontSize: 13, lineHeight: 16, fontWeight: '900' },
 });

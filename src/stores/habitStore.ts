@@ -27,6 +27,7 @@ export type HabitActions = {
   setLog(input: HabitLog): void;
   clearLog(date: string, habitId: string): void;
   toggleTodayDone(habitId: string): void;
+  removeHabit(id: string): void;
 };
 
 export type HabitState = {
@@ -147,6 +148,15 @@ export const useHabitStore = create<HabitStore>()(
         const existing = get().logs.find((x) => x.date === today && x.habitId === habitId);
         if (existing?.status === 'done') get().clearLog(today, habitId);
         else get().setLog({ date: today, habitId, status: 'done' });
+      },
+      removeHabit(id) {
+        set((s) => {
+          const { [id]: _removed, ...habits } = s.habits;
+          return {
+            habits,
+            logs: s.logs.filter((x) => x.habitId !== id),
+          };
+        });
       },
     }),
     {
