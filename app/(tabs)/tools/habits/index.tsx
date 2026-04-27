@@ -17,6 +17,7 @@ import { Swipeable } from 'react-native-gesture-handler';
 import { IconGrid } from '@/components/icon-grid';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { TOOL_CATEGORIES, type ToolCategory } from '@/core/constants/todo-category';
 import { UI_ICONS } from '@/core/constants/ui-icons';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { type HabitCard, selectHabitCards, useHabitStore } from '@/stores';
@@ -42,6 +43,7 @@ export default function HabitsScreen() {
   const [formTitle, setFormTitle] = useState('');
   const [formSchedule, setFormSchedule] = useState('');
   const [formIconId, setFormIconId] = useState('default');
+  const [formCategory, setFormCategory] = useState<ToolCategory>('自我');
 
   useEffect(() => {
     if (params?.create === '1') openCreateModal();
@@ -57,6 +59,7 @@ export default function HabitsScreen() {
     setFormTitle('');
     setFormSchedule('');
     setFormIconId('default');
+    setFormCategory('自我');
     setModalVisible(true);
   }
 
@@ -67,6 +70,7 @@ export default function HabitsScreen() {
     setFormTitle(target.title);
     setFormSchedule(target.schedule ?? '');
     setFormIconId(target.iconId ?? 'default');
+    setFormCategory(target.category ?? '自我');
     setModalVisible(true);
   }
 
@@ -74,8 +78,8 @@ export default function HabitsScreen() {
     const trimmed = formTitle.trim();
     if (!trimmed) return;
     const schedule = formSchedule.trim() ? formSchedule.trim() : undefined;
-    if (editingId) updateHabit(editingId, { title: trimmed, schedule, iconId: formIconId });
-    else addHabit({ title: trimmed, schedule, iconId: formIconId });
+    if (editingId) updateHabit(editingId, { title: trimmed, schedule, iconId: formIconId, category: formCategory });
+    else addHabit({ title: trimmed, schedule, iconId: formIconId, category: formCategory });
     setModalVisible(false);
   }
 
@@ -169,6 +173,29 @@ export default function HabitsScreen() {
               <View style={styles.group}>
                 <ThemedText style={[styles.groupLabel, { color: mutedText }]}>图标（单选）</ThemedText>
                 <IconGrid icons={UI_ICONS} selectedId={formIconId} onSelect={setFormIconId} />
+              </View>
+
+              <View style={styles.group}>
+                <ThemedText style={[styles.groupLabel, { color: mutedText }]}>分类（单选）</ThemedText>
+                <View style={styles.chips}>
+                  {TOOL_CATEGORIES.map((category) => {
+                    const active = category === formCategory;
+                    return (
+                      <Pressable
+                        key={category}
+                        onPress={() => setFormCategory(category)}
+                        style={[
+                          styles.chip,
+                          {
+                            borderColor: active ? accent : cardBorder,
+                            backgroundColor: active ? 'rgba(209,187,222,0.18)' : 'transparent',
+                          },
+                        ]}>
+                        <ThemedText style={[styles.chipText, { color: active ? accent : mutedText }]}>{category}</ThemedText>
+                      </Pressable>
+                    );
+                  })}
+                </View>
               </View>
 
               <View style={styles.group}>
@@ -323,6 +350,9 @@ const styles = StyleSheet.create({
   group: { gap: 8 },
   groupLabel: { fontSize: 13, lineHeight: 16, fontWeight: '900' },
   input: { height: 44, borderWidth: 1.5, borderRadius: 14, paddingHorizontal: 12, fontSize: 15, fontWeight: '700' },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chip: { borderWidth: 1.5, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8 },
+  chipText: { fontSize: 13, lineHeight: 16, fontWeight: '900' },
   sheetActions: { flexDirection: 'row', gap: 10, marginTop: 6, paddingTop: 6 },
   actionBtn: { flex: 1, height: 42, borderWidth: 1.5, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   actionText: { fontSize: 15, lineHeight: 18, fontWeight: '900' },

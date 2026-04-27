@@ -21,6 +21,7 @@ export type GameActions = {
   setPlayer(player: PlayerState): void;
   setFlag(key: string, value: boolean): void;
   addAttr(key: string, value: number): void;
+  addAttrClamped(key: string, value: number): void;
   setLocation(locationId: string | undefined): void;
   gotoEvent(eventId: string): void;
   save(slotId: string): void;
@@ -60,6 +61,13 @@ export const useGameStore = create<GameStore>()(
         set((s) => {
           const current = s.player.attrs[key] ?? 0;
           return { player: { ...s.player, attrs: { ...s.player.attrs, [key]: current + value } } };
+        });
+      },
+      addAttrClamped(key, value) {
+        set((s) => {
+          const current = s.player.attrs[key] ?? 0;
+          const next = Math.max(0, current + value);
+          return { player: { ...s.player, attrs: { ...s.player.attrs, [key]: next } } };
         });
       },
       setLocation(locationId) {

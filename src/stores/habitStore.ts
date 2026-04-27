@@ -1,7 +1,9 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
+import type { ToolCategory } from '@/core/constants/todo-category';
 import { getLocalISODate } from '@/core/utils/date';
+import { applyRealityReward } from '@/services/rewards/realityReward';
 import { zustandStorage } from '@/services/storage/zustandStorage';
 
 export type Habit = {
@@ -9,6 +11,7 @@ export type Habit = {
   title: string;
   schedule?: string;
   iconId?: string;
+  category?: ToolCategory;
   archived?: boolean;
 };
 
@@ -92,10 +95,10 @@ function defaultState(): HabitState {
   const today = getLocalISODate();
   return {
     habits: {
-      h1: { id: 'h1', title: '早睡早起', schedule: '每日 1 次', iconId: 'moon', archived: false },
-      h2: { id: 'h2', title: '喝水', schedule: '每日 8 次', iconId: 'water', archived: false },
-      h3: { id: 'h3', title: '跑步机', schedule: '每日 30 分钟', iconId: 'run', archived: false },
-      h4: { id: 'h4', title: '画画', schedule: '每周 3 次', iconId: 'draw', archived: false },
+      h1: { id: 'h1', title: '早睡早起', schedule: '每日 1 次', iconId: 'moon', category: '自我', archived: false },
+      h2: { id: 'h2', title: '喝水', schedule: '每日 8 次', iconId: 'water', category: '健康', archived: false },
+      h3: { id: 'h3', title: '跑步机', schedule: '每日 30 分钟', iconId: 'run', category: '健康', archived: false },
+      h4: { id: 'h4', title: '画画', schedule: '每周 3 次', iconId: 'draw', category: '成长', archived: false },
     },
     logs: [
       { date: today, habitId: 'h2', status: 'done' },
@@ -115,6 +118,7 @@ export const useHabitStore = create<HabitStore>()(
           title: input.title,
           schedule: input.schedule,
           iconId: input.iconId ?? 'default',
+          category: input.category ?? '自我',
           archived: input.archived ?? false,
         };
         set((s) => ({ habits: { ...s.habits, [id]: next } }));
@@ -145,9 +149,21 @@ export const useHabitStore = create<HabitStore>()(
       },
       toggleTodayDone(habitId) {
         const today = getLocalISODate();
+        const habit = get().habits[habitId];
         const existing = get().logs.find((x) => x.date === today && x.habitId === habitId);
+        const nextDone = existing?.status !== 'done';
         if (existing?.status === 'done') get().clearLog(today, habitId);
         else get().setLog({ date: today, habitId, status: 'done' });
+
+        if (habit) {
+          applyRealityReward({
+            source: 'habit',
+            id: habit.id,
+            title: habit.title,
+            category: habit.category,
+            completed: nextDone,
+          });
+        }
       },
       removeHabit(id) {
         set((s) => {
@@ -161,12 +177,21 @@ export const useHabitStore = create<HabitStore>()(
     }),
     {
       name: 'lifeos.habitStore',
-      version: 1,
+      version: 2,
       storage: zustandStorage,
       partialize: (s) => ({
         habits: s.habits,
         logs: s.logs,
       }),
+      migrate: (persistedState: any) => {
+        const habits = persistedState?.habits;
+        if (habits && typeof habits === 'object') {
+          for (const habit of Object.values(habits) as any[]) {
+            if (habit && typeof habit === 'object' && !habit.category) habit.category = '自我';
+          }
+        }
+        return persistedState;
+      },
     }
   )
 );

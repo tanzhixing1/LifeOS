@@ -4,7 +4,7 @@ import { persist } from 'zustand/middleware';
 import { getLocalISODate } from '@/core/utils/date';
 import { zustandStorage } from '@/services/storage/zustandStorage';
 
-export type MessengerTriggerType = 'habit_stagnant' | 'todo_due_soon' | 'todo_completed' | 'todo_created' | 'test';
+export type MessengerTriggerType = 'habit_stagnant' | 'todo_due_soon' | 'todo_completed' | 'todo_created' | 'reality_reward' | 'test';
 
 export type MessengerMessage = {
   id: string;

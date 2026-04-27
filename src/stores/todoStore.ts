@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
 import type { TodoCategory } from '@/core/constants/todo-category';
+import { applyRealityReward } from '@/services/rewards/realityReward';
 import { zustandStorage } from '@/services/storage/zustandStorage';
 import { useMessengerStore } from '@/stores/messengerStore';
 
@@ -51,14 +52,7 @@ export const useTodoStore = create<TodoStore>()(
         const nextDone = prev ? !prev.done : false;
         set((s) => ({ items: s.items.map((x) => (x.id === id ? { ...x, done: !x.done } : x)) }));
 
-        if (prev && nextDone) {
-          useMessengerStore.getState().trigger({
-            type: 'todo_completed',
-            key: `todo_completed.${id}`,
-            title: '嗯？居然做完了',
-            body: `我还以为你会拖到下辈子。任务「${prev.title}」已完成。`,
-          });
-        }
+        if (prev) applyRealityReward({ source: 'todo', id: prev.id, title: prev.title, category: prev.category, completed: nextDone });
       },
       addTodo(input) {
         const id = `t_${Date.now()}`;
