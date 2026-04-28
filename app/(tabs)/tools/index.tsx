@@ -35,6 +35,7 @@ type CalendarDay = {
   dateISO: string;
   dayNumber: number;
   isCurrentMonth: boolean;
+  isWeekend: boolean;
   isToday: boolean;
   isSelected: boolean;
   recordCount: number;
@@ -110,6 +111,7 @@ function buildCalendarDays(visibleMonth: Date, selectedDateISO: string, todayISO
       dateISO,
       dayNumber: date.getDate(),
       isCurrentMonth: date.getFullYear() === year && date.getMonth() === monthIndex,
+      isWeekend: date.getDay() === 0 || date.getDay() === 6,
       isToday: dateISO === todayISO,
       isSelected: dateISO === selectedDateISO,
       recordCount: recordCountsByDate.get(dateISO) ?? 0,
@@ -147,13 +149,6 @@ export default function ToolsHomeScreen() {
 
   const todayISO = useMemo(() => getLocalISODate(new Date()), []);
   const selectedDateISO = useMemo(() => getLocalISODate(selectedDate), [selectedDate]);
-
-  const todayText = useMemo(() => {
-    const d = new Date();
-    const date = d.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' });
-    const weekday = d.toLocaleDateString('zh-CN', { weekday: 'long' });
-    return `${date} · ${weekday}`;
-  }, []);
 
   const habitStats = useMemo(() => {
     const done = habits.filter((h) => h.doneToday).length;
@@ -198,14 +193,14 @@ export default function ToolsHomeScreen() {
     () => selectedDate.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric' }),
     [selectedDate]
   );
+  const selectedTimelineTitle = useMemo(() => `${selectedDateLabel} · 星期${WEEKDAY_LABELS[selectedDate.getDay()]}`, [selectedDate, selectedDateLabel]);
 
   const calendarHintText = useMemo(() => {
     if (!isTimelineExpanded) {
-      return selectedRecordCount > 0 ? `这天有 ${selectedRecordCount} 条记录，点击日期展开` : '这天还没有记录，点击日期展开';
+      return selectedRecordCount > 0 ? `这天有 ${selectedRecordCount} 条生活记录，点击日期展开` : '这天还没有记录，点击日期展开';
     }
     return selectedRecordCount > 0 ? `这天有 ${selectedRecordCount} 条生活记录` : '这天还没有记录';
   }, [isTimelineExpanded, selectedRecordCount]);
-
   const shiftVisibleMonth = (offset: number) => {
     setVisibleMonth((currentMonth) => {
       const nextMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + offset, 1);
@@ -352,20 +347,15 @@ export default function ToolsHomeScreen() {
 
   return (
     <ScreenScaffold scroll contentContainerStyle={styles.content}>
-      <View style={styles.header}>
-        <View style={[styles.issueLine, { backgroundColor: palette.border }]} />
-        <ThemedText style={[styles.kicker, { color: reportAccent }]}>LIFEOS DAILY BRIEFING</ThemedText>
-        <ThemedText style={styles.bigTitle}>今日工具简报</ThemedText>
-        <ThemedText style={[styles.subtitle, { color: palette.muted }]}>{todayText}</ThemedText>
-      </View>
-
-      <SectionCard elevated style={[styles.calendarCard, { borderColor: palette.accent }]}>
+      <SectionCard elevated style={[styles.calendarCard, { borderColor: theme === 'light' ? 'rgba(209,187,222,0.42)' : 'rgba(228,203,242,0.16)' }]}>
+        <View style={[styles.calendarTape, { backgroundColor: theme === 'light' ? '#FFF2BE' : 'rgba(209,187,222,0.16)' }]} />
         <View style={styles.calendarTop}>
           <View style={styles.calendarTitleBlock}>
             <ThemedText style={[styles.briefMeta, { color: palette.muted }]}>DAILY TIMELINE</ThemedText>
             <ThemedText style={styles.calendarTitle}>
               {visibleMonth.getFullYear()}年 {visibleMonth.getMonth() + 1}月
             </ThemedText>
+            <ThemedText style={[styles.calendarSubtitle, { color: palette.muted }]}>paper calendar</ThemedText>
           </View>
           <View style={styles.monthControls}>
             <Pressable
@@ -390,14 +380,14 @@ export default function ToolsHomeScreen() {
         </View>
 
         <View style={styles.calendarBindingRow}>
-          <View style={[styles.calendarBindingDot, { backgroundColor: palette.accent }]} />
-          <View style={[styles.calendarBindingLine, { backgroundColor: palette.border }]} />
-          <View style={[styles.calendarBindingDot, { backgroundColor: palette.accent }]} />
+          {Array.from({ length: 12 }, (_, index) => (
+            <View key={index} style={[styles.calendarBindingDot, { borderColor: palette.border, backgroundColor: palette.card }]} />
+          ))}
         </View>
 
         <View style={styles.weekdayRow}>
-          {WEEKDAY_LABELS.map((label) => (
-            <ThemedText key={label} style={[styles.weekdayText, { color: palette.muted }]}>
+          {WEEKDAY_LABELS.map((label, index) => (
+            <ThemedText key={label} style={[styles.weekdayText, index === 0 || index === 6 ? styles.weekendText : undefined, { color: palette.muted }]}>
               {label}
             </ThemedText>
           ))}
@@ -411,28 +401,66 @@ export default function ToolsHomeScreen() {
                   ? palette.accentStrong
                   : day.isToday
                     ? reportAccent
-                    : day.isCurrentMonth
+                    : day.isWeekend && day.isCurrentMonth
+                      ? palette.accentStrong
+                      : day.isCurrentMonth
                       ? palette.text
                       : palette.muted;
-
+                const hasRecords = day.recordCount > 0;
+                const markerVariant =
+                  day.isSelected && hasRecords
+                    ? 'selected-record'
+                    : day.isToday
+                      ? 'today'
+                      : hasRecords
+                        ? 'record'
+                        : null;
+                const shouldShowMarker = markerVariant !== null;
+                const markerColor =
+                  markerVariant === 'today'
+                    ? palette.accentStrong
+                    : markerVariant === 'selected-record'
+                      ? palette.accentStrong
+                      : markerVariant === 'record'
+                        ? 'rgba(150,144,138,0.78)'
+                        : 'transparent';
                 return (
                   <Pressable
                     key={day.dateISO}
                     onPress={() => selectCalendarDay(day)}
                     style={({ pressed }) => [styles.calendarDayCell, { opacity: pressed ? 0.75 : 1 }]}>
-                    <View
-                      style={[
-                        styles.calendarDayCircle,
-                        {
-                          backgroundColor: day.isSelected ? palette.accentSoft : day.isToday ? palette.input : 'transparent',
-                          borderColor: day.isSelected ? palette.accentStrong : day.isToday ? reportAccent : 'transparent',
-                          opacity: day.isCurrentMonth ? 1 : 0.38,
-                          transform: [{ rotate: day.isSelected ? '-2deg' : '0deg' }],
-                        },
-                      ]}>
-                      <ThemedText style={[styles.calendarDayText, { color: dayTextColor }]}>{day.dayNumber}</ThemedText>
-                      <View style={styles.recordDotSlot}>
-                        {day.recordCount > 0 ? <View style={[styles.recordDot, { backgroundColor: palette.accentStrong }]} /> : null}
+                    <View style={styles.calendarDayMarkerWrap}>
+                      {day.isSelected ? (
+                        <View
+                          pointerEvents="none"
+                          style={[
+                            styles.selectedScribble,
+                            {
+                              borderColor: palette.accentStrong,
+                              backgroundColor: theme === 'light' ? 'rgba(209,187,222,0.03)' : 'rgba(228,203,242,0.08)',
+                            },
+                          ]}
+                        />
+                      ) : null}
+                      <View
+                        style={[
+                          styles.calendarDayCircle,
+                          {
+                            backgroundColor: 'transparent',
+                            borderColor: day.isSelected ? palette.accentStrong : 'transparent',
+                            borderWidth: day.isSelected ? 2.4 : 1,
+                            opacity: day.isCurrentMonth ? 1 : 0.34,
+                            transform: [{ rotate: day.isSelected ? '-5deg' : '0deg' }, { scale: day.isSelected ? 1.03 : 1 }],
+                            borderTopLeftRadius: day.isSelected ? 18 : 20,
+                            borderTopRightRadius: day.isSelected ? 10 : 20,
+                            borderBottomRightRadius: day.isSelected ? 18 : 20,
+                            borderBottomLeftRadius: day.isSelected ? 10 : 20,
+                          },
+                        ]}>
+                        <ThemedText style={[styles.calendarDayText, { color: dayTextColor }]}>{day.dayNumber}</ThemedText>
+                        <View style={styles.calendarMarkerSlot}>
+                          {shouldShowMarker ? <View style={[styles.calendarMarkerDot, { backgroundColor: markerColor }]} /> : null}
+                        </View>
                       </View>
                     </View>
                   </Pressable>
@@ -449,24 +477,26 @@ export default function ToolsHomeScreen() {
       </SectionCard>
 
       {isTimelineExpanded ? (
-        <SectionCard elevated style={styles.timelineCard}>
+        <SectionCard elevated style={[styles.timelineCard, { borderColor: theme === 'light' ? 'rgba(216,208,199,0.16)' : 'rgba(42,48,54,0.28)' }]}>
+          <View pointerEvents="none" style={[styles.timelineGlassSheen, { backgroundColor: theme === 'light' ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.035)' }]} />
           <View style={styles.sectionTop}>
             <View>
               <ThemedText style={[styles.briefMeta, { color: palette.muted }]}>SELECTED DAY</ThemedText>
-              <ThemedText style={styles.sectionTitle}>生活时间线</ThemedText>
+              <View style={styles.timelineTitleRow}>
+                <ThemedText style={styles.sectionTitle}>{selectedTimelineTitle}</ThemedText>
+              </View>
             </View>
             <View style={styles.timelineHeaderActions}>
-              <ThemedText style={[styles.countText, { color: palette.muted }]}>{selectedRecordCount} 条</ThemedText>
               <AppChip title="+ 添加" onPress={openManualRecordModal} />
             </View>
           </View>
 
           {selectedTimelineRecords.length === 0 ? (
             <View style={[styles.timelineEmpty, { backgroundColor: palette.input, borderColor: palette.border }]}>
-              <ThemedText style={[styles.emptyMark, { color: palette.accentStrong }]}>◇</ThemedText>
+              <View style={[styles.emptyPaperMark, { borderColor: palette.accent, backgroundColor: palette.card }]} />
               <View style={styles.timelineEmptyText}>
                 <ThemedText style={styles.timelineEmptyTitle}>这天还没有记录</ThemedText>
-                <ThemedText style={[styles.sectionSub, { color: palette.muted }]}>完成待办或习惯打卡后，会自动留在这里。</ThemedText>
+                <ThemedText style={[styles.sectionSub, { color: palette.muted }]}>完成待办、习惯打卡，或手动添加一条生活记录。</ThemedText>
                 <AppButton title="添加一条记录" variant="outline" onPress={openManualRecordModal} style={styles.timelineEmptyAction} />
               </View>
             </View>
@@ -475,45 +505,47 @@ export default function ToolsHomeScreen() {
               <View style={[styles.timelineRail, { backgroundColor: palette.accentSoft }]} />
               {selectedTimelineRecords.map((record) => (
                 <View key={record.id} style={styles.timelineItem}>
-                  <View style={[styles.timelineNode, { backgroundColor: palette.card, borderColor: palette.accentStrong }]} />
+                  <View style={styles.timelineAxisColumn}>
+                    <ThemedText style={[styles.timelineTimeLabel, { color: palette.muted }]}>{formatTimelineTime(record)}</ThemedText>
+                    <View style={[styles.timelineNode, { backgroundColor: palette.card, borderColor: palette.accentStrong }]} />
+                  </View>
                   <Pressable
                     onPress={() => openRecordEditor(record)}
                     style={({ pressed }) => [
                       styles.timelineRecordCard,
-                      { backgroundColor: palette.input, borderColor: palette.border, opacity: pressed ? 0.82 : 1 },
+                      {
+                        backgroundColor: theme === 'light' ? 'rgba(255,252,246,0.62)' : 'rgba(255,255,255,0.05)',
+                        borderColor: pressed ? palette.accentSoft : theme === 'light' ? 'rgba(216,208,199,0.18)' : 'rgba(255,255,255,0.08)',
+                        opacity: pressed ? 0.92 : 1,
+                      },
                     ]}>
-                    <View style={styles.timelineRecordTop}>
-                      <ThemedText style={[styles.timelineTime, { color: palette.accentStrong }]}>{formatTimelineTime(record)}</ThemedText>
-                      <View style={styles.timelineTags}>
-                        {record.category ? (
-                          <View style={[styles.timelineTag, { backgroundColor: palette.accentSoft, borderColor: palette.border }]}>
-                            <ThemedText style={[styles.timelineTagText, { color: palette.accentStrong }]}>{record.category}</ThemedText>
-                          </View>
-                        ) : null}
-                        <View style={[styles.timelineTag, { backgroundColor: palette.cardAlt, borderColor: palette.border }]}>
-                          <ThemedText style={[styles.timelineTagText, { color: palette.muted }]}>{SOURCE_LABELS[record.source]}</ThemedText>
+                    <View style={styles.timelinePrimaryRow}>
+                      <ThemedText style={styles.timelineTitle}>{record.title}</ThemedText>
+                    </View>
+                    <View style={styles.timelineMetaRow}>
+                      {record.category ? (
+                        <View style={[styles.timelineTag, { backgroundColor: theme === 'light' ? 'rgba(209,187,222,0.08)' : 'rgba(209,187,222,0.08)', borderColor: theme === 'light' ? 'rgba(139,111,161,0.08)' : 'rgba(228,203,242,0.08)' }]}>
+                          <ThemedText style={[styles.timelineTagText, { color: palette.accentStrong }]}>{record.category}</ThemedText>
                         </View>
+                      ) : null}
+                      <View style={[styles.timelineTag, { backgroundColor: theme === 'light' ? 'rgba(255,255,255,0.46)' : 'rgba(255,255,255,0.04)', borderColor: theme === 'light' ? 'rgba(216,208,199,0.14)' : 'rgba(255,255,255,0.08)' }]}>
+                        <ThemedText style={[styles.timelineTagText, { color: palette.muted }]}>{SOURCE_LABELS[record.source]}</ThemedText>
                       </View>
                     </View>
-                    <ThemedText style={styles.timelineTitle}>{record.title}</ThemedText>
-                    {record.note ? <ThemedText style={[styles.timelineNote, { color: palette.muted }]}>{record.note}</ThemedText> : null}
+                    {record.note ? (
+                      <View style={[styles.timelineNoteShell, { backgroundColor: theme === 'light' ? 'rgba(247,240,234,0.42)' : 'rgba(255,255,255,0.03)' }]}>
+                        <ThemedText numberOfLines={2} style={[styles.timelineNote, { color: palette.muted }]}>
+                          {record.note}
+                        </ThemedText>
+                      </View>
+                    ) : null}
                   </Pressable>
                 </View>
               ))}
             </View>
           )}
         </SectionCard>
-      ) : (
-        <SectionCard style={styles.timelineCollapsedCard}>
-          <View style={styles.timelineCollapsedRow}>
-            <View>
-              <ThemedText style={[styles.briefMeta, { color: palette.muted }]}>SELECTED DAY</ThemedText>
-              <ThemedText style={[styles.sectionSub, { color: palette.muted }]}>时间线已收起</ThemedText>
-            </View>
-            <AppChip title="+ 添加" onPress={openManualRecordModal} />
-          </View>
-        </SectionCard>
-      )}
+      ) : null}
 
       <SectionCard style={styles.quickPanel}>
         <View style={styles.sectionTop}>
@@ -691,9 +723,10 @@ export default function ToolsHomeScreen() {
               {editingRecord ? (
                 <AppButton
                   title={editingRecord.source === 'manual' ? '删除' : '隐藏'}
-                  variant="danger"
+                  variant="outline"
                   onPress={confirmDeleteEditingRecord}
-                  style={styles.sheetAction}
+                  style={[styles.sheetAction, { borderColor: palette.danger, backgroundColor: palette.dangerSoft }]}
+                  textStyle={{ color: palette.danger }}
                 />
               ) : null}
               <AppButton title="取消" variant="outline" onPress={closeManualRecordModal} style={styles.sheetAction} />
@@ -707,35 +740,66 @@ export default function ToolsHomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  content: { gap: uiTokens.spacing.md },
-  header: { paddingTop: uiTokens.layout.headerPaddingTop, paddingBottom: uiTokens.spacing.sm, gap: uiTokens.spacing.sm, alignItems: 'center' },
-  issueLine: { width: 88, height: 1, opacity: 0.9 },
-  kicker: { ...uiTokens.typography.meta, letterSpacing: 1.2, textAlign: 'center' },
-  bigTitle: uiTokens.typography.screenTitle,
-  subtitle: { fontSize: 13, lineHeight: 18, fontWeight: '800', textAlign: 'center' },
+  content: { gap: uiTokens.spacing.lg },
   briefMeta: { fontSize: 10, lineHeight: 13, fontWeight: '900', letterSpacing: 1 },
-  calendarCard: { padding: 16, gap: uiTokens.spacing.md },
+  calendarCard: {
+    position: 'relative',
+    overflow: 'visible',
+    paddingHorizontal: 18,
+    paddingTop: 24,
+    paddingBottom: 16,
+    gap: uiTokens.spacing.md,
+    borderRadius: uiTokens.radius.xl,
+    shadowColor: '#2E2A26',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.08,
+    shadowRadius: 20,
+    elevation: 3,
+  },
+  calendarTape: {
+    position: 'absolute',
+    top: -12,
+    left: 22,
+    width: 62,
+    height: 24,
+    borderRadius: 5,
+    opacity: 0.72,
+    transform: [{ rotate: '-5deg' }],
+  },
   calendarTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: uiTokens.spacing.md },
   calendarTitleBlock: { gap: 2 },
-  calendarTitle: { fontSize: 24, lineHeight: 30, fontWeight: '900' },
+  calendarTitle: { fontSize: 26, lineHeight: 32, fontWeight: '900' },
+  calendarSubtitle: { fontSize: 11, lineHeight: 14, fontWeight: '900' },
   monthControls: { flexDirection: 'row', gap: uiTokens.spacing.sm },
-  monthButton: { width: 36, height: 36, borderRadius: uiTokens.radius.pill, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
-  monthButtonText: { fontSize: 25, lineHeight: 28, fontWeight: '900' },
-  calendarBindingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: uiTokens.spacing.sm, marginTop: -2 },
-  calendarBindingDot: { width: 7, height: 7, borderRadius: uiTokens.radius.pill },
-  calendarBindingLine: { width: 92, height: 1 },
+  monthButton: { width: 34, height: 34, borderRadius: uiTokens.radius.pill, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  monthButtonText: { fontSize: 24, lineHeight: 27, fontWeight: '900' },
+  calendarBindingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 9, marginTop: -4, marginBottom: 2, opacity: 0.72 },
+  calendarBindingDot: { width: 6, height: 11, borderRadius: uiTokens.radius.pill, borderWidth: 1 },
   weekdayRow: { flexDirection: 'row', alignItems: 'center' },
-  weekdayText: { flex: 1, fontSize: 11, lineHeight: 15, fontWeight: '900', textAlign: 'center' },
-  calendarGrid: { gap: 2 },
+  weekdayText: { flex: 1, fontSize: 12, lineHeight: 16, fontWeight: '900', textAlign: 'center' },
+  weekendText: { opacity: 0.74 },
+  calendarGrid: { gap: 3 },
   calendarWeekRow: { flexDirection: 'row', alignItems: 'center' },
-  calendarDayCell: { flex: 1, minHeight: 46, alignItems: 'center', justifyContent: 'center' },
-  calendarDayCircle: { width: 40, height: 40, borderRadius: 20, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
-  calendarDayText: { fontSize: 17, lineHeight: 20, fontWeight: '900' },
-  recordDotSlot: { height: 7, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
-  recordDot: { width: 5, height: 5, borderRadius: uiTokens.radius.pill },
+  calendarDayCell: { flex: 1, minHeight: 48, alignItems: 'center', justifyContent: 'center', position: 'relative' },
+  calendarDayMarkerWrap: { width: 42, height: 42, alignItems: 'center', justifyContent: 'center', position: 'relative' },
+  selectedScribble: {
+    position: 'absolute',
+    width: 42,
+    height: 42,
+    borderWidth: 2.3,
+    borderTopLeftRadius: 22,
+    borderTopRightRadius: 12,
+    borderBottomRightRadius: 22,
+    borderBottomLeftRadius: 12,
+    transform: [{ rotate: '-6deg' }],
+  },
+  calendarDayCircle: { width: 39, height: 39, borderRadius: 20, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
+  calendarDayText: { fontSize: 18, lineHeight: 21, fontWeight: '900' },
+  calendarMarkerSlot: { height: 7, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
+  calendarMarkerDot: { width: 5.5, height: 5.5, borderRadius: uiTokens.radius.pill },
   calendarHint: {
     borderWidth: 1,
-    borderRadius: uiTokens.radius.md,
+    borderRadius: uiTokens.radius.lg,
     paddingHorizontal: uiTokens.spacing.md,
     paddingVertical: uiTokens.spacing.sm,
     flexDirection: 'row',
@@ -745,33 +809,66 @@ const styles = StyleSheet.create({
   },
   calendarHintDate: { fontSize: 13, lineHeight: 18, fontWeight: '900' },
   calendarHintText: { flex: 1, fontSize: 13, lineHeight: 18, fontWeight: '800', textAlign: 'right' },
-  timelineCard: { gap: uiTokens.spacing.md },
+  timelineCard: {
+    gap: uiTokens.spacing.md,
+    shadowColor: '#2E2A26',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.012,
+    shadowRadius: 10,
+    elevation: 0,
+    overflow: 'hidden',
+    backgroundColor: 'rgba(255,252,247,0.38)',
+    borderWidth: 1,
+    borderRadius: uiTokens.radius.xl,
+  },
+  timelineGlassSheen: { ...StyleSheet.absoluteFillObject, opacity: 1 },
+  timelineTitleRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: uiTokens.spacing.sm },
+  timelineCountPill: { borderWidth: 1, borderRadius: uiTokens.radius.pill, paddingHorizontal: uiTokens.spacing.sm, paddingVertical: 2 },
+  timelineCountText: { fontSize: 11, lineHeight: 14, fontWeight: '900' },
   timelineHeaderActions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: uiTokens.spacing.sm },
   timelineEmpty: {
     borderWidth: 1,
-    borderRadius: uiTokens.radius.md,
-    padding: uiTokens.spacing.md,
+    borderRadius: uiTokens.radius.lg,
+    padding: uiTokens.spacing.lg,
     flexDirection: 'row',
     alignItems: 'center',
     gap: uiTokens.spacing.md,
   },
+  emptyPaperMark: { width: 18, height: 18, borderRadius: uiTokens.radius.pill, borderWidth: 2 },
   timelineEmptyText: { flex: 1, gap: 2 },
   timelineEmptyTitle: { fontSize: 15, lineHeight: 20, fontWeight: '900' },
   timelineEmptyAction: { alignSelf: 'flex-start', minHeight: 38, marginTop: uiTokens.spacing.sm, borderRadius: uiTokens.radius.md },
-  timelineList: { gap: uiTokens.spacing.sm, position: 'relative', paddingLeft: 16 },
-  timelineRail: { position: 'absolute', left: 21, top: 14, bottom: 14, width: 2, borderRadius: uiTokens.radius.pill },
-  timelineItem: { flexDirection: 'row', gap: uiTokens.spacing.md, alignItems: 'flex-start' },
-  timelineNode: { width: 12, height: 12, borderRadius: uiTokens.radius.pill, borderWidth: 2, marginTop: 16, zIndex: 1 },
-  timelineRecordCard: { flex: 1, borderWidth: 1, borderRadius: uiTokens.radius.md, padding: uiTokens.spacing.md, gap: uiTokens.spacing.sm },
-  timelineRecordTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: uiTokens.spacing.sm, flexWrap: 'wrap' },
-  timelineTime: { fontSize: 13, lineHeight: 18, fontWeight: '900' },
-  timelineTags: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-end', gap: uiTokens.spacing.xs },
-  timelineTag: { borderWidth: 1, borderRadius: uiTokens.radius.pill, paddingHorizontal: uiTokens.spacing.sm, paddingVertical: 3 },
-  timelineTagText: { fontSize: 11, lineHeight: 14, fontWeight: '900' },
-  timelineTitle: { fontSize: 15, lineHeight: 20, fontWeight: '900' },
-  timelineNote: { fontSize: 13, lineHeight: 18, fontWeight: '800' },
-  timelineCollapsedCard: { paddingVertical: uiTokens.spacing.md },
-  timelineCollapsedRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: uiTokens.spacing.md },
+  timelineList: { gap: uiTokens.spacing.md, position: 'relative', paddingLeft: 0, paddingRight: uiTokens.spacing.sm },
+  timelineRail: { position: 'absolute', left: 45, top: 12, bottom: 12, width: 1, borderRadius: uiTokens.radius.pill },
+  timelineItem: { flexDirection: 'row', gap: uiTokens.spacing.sm, alignItems: 'flex-start', paddingRight: uiTokens.spacing.xs },
+  timelineAxisColumn: { width: 50, alignItems: 'flex-end', paddingTop: 2, paddingRight: 4 },
+  timelineTimeLabel: { width: 36, fontSize: 10, lineHeight: 13, fontWeight: '800', letterSpacing: 0.1, marginBottom: 4, textAlign: 'right' },
+  timelineNode: { width: 8, height: 8, borderRadius: uiTokens.radius.pill, borderWidth: 1.5, zIndex: 1 },
+  timelineRecordCard: {
+    flex: 1,
+    minWidth: 0,
+    borderWidth: 1,
+    borderRadius: uiTokens.radius.lg,
+    paddingHorizontal: uiTokens.spacing.md,
+    paddingVertical: uiTokens.spacing.sm,
+    gap: uiTokens.spacing.xs,
+    shadowColor: '#2E2A26',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.014,
+    shadowRadius: 6,
+    elevation: 0,
+  },
+  timelinePrimaryRow: { flexDirection: 'row', alignItems: 'center', gap: uiTokens.spacing.xs },
+  timelineMetaRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: uiTokens.spacing.xs },
+  timelineTag: { borderWidth: 1, borderRadius: uiTokens.radius.pill, paddingHorizontal: 6, paddingVertical: 2 },
+  timelineTagText: { fontSize: 10, lineHeight: 13, fontWeight: '900' },
+  timelineTitle: { fontSize: 16, lineHeight: 21, fontWeight: '900' },
+  timelineNoteShell: {
+    borderRadius: uiTokens.radius.md,
+    paddingHorizontal: uiTokens.spacing.sm,
+    paddingVertical: 6,
+  },
+  timelineNote: { fontSize: 12, lineHeight: 17, fontWeight: '800' },
   sheetMask: { flex: 1 },
   sheetMaskInner: { flex: 1 },
   sheetKav: { position: 'absolute', left: 0, right: 0, bottom: 0 },
@@ -779,14 +876,20 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderTopLeftRadius: uiTokens.radius.xl,
     borderTopRightRadius: uiTokens.radius.xl,
-    padding: uiTokens.spacing.lg,
+    paddingHorizontal: uiTokens.spacing.lg,
+    paddingTop: uiTokens.spacing.md,
     paddingBottom: uiTokens.spacing.xl,
     maxHeight: '88%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -8 },
+    shadowOpacity: 0.08,
+    shadowRadius: 18,
+    elevation: 4,
   },
-  sheetTop: { alignItems: 'center', justifyContent: 'center', height: 22 },
+  sheetTop: { alignItems: 'center', justifyContent: 'center', height: 24 },
   sheetHandle: { width: 44, height: 5, borderRadius: uiTokens.radius.pill },
-  sheetTitleWrap: { alignItems: 'center', gap: 2, marginBottom: uiTokens.spacing.md },
-  sheetTitle: uiTokens.typography.cardTitle,
+  sheetTitleWrap: { alignItems: 'center', gap: 3, marginBottom: uiTokens.spacing.md },
+  sheetTitle: { fontSize: 18, lineHeight: 23, fontWeight: '900' },
   sourcePill: { borderWidth: 1, borderRadius: uiTokens.radius.pill, paddingHorizontal: uiTokens.spacing.sm, paddingVertical: 3, marginTop: uiTokens.spacing.xs },
   sourcePillText: { fontSize: 11, lineHeight: 14, fontWeight: '900' },
   manualForm: { gap: uiTokens.spacing.md, paddingBottom: uiTokens.spacing.sm },
@@ -797,7 +900,7 @@ const styles = StyleSheet.create({
   formInput: {
     minHeight: 44,
     borderWidth: 1.5,
-    borderRadius: uiTokens.radius.md,
+    borderRadius: uiTokens.radius.lg,
     paddingHorizontal: uiTokens.spacing.md,
     paddingVertical: uiTokens.spacing.sm,
     fontSize: 15,
