@@ -91,6 +91,7 @@ export default function ToolsHomeScreen() {
   const [quickOpen, setQuickOpen] = useState(false);
   const [visibleMonth, setVisibleMonth] = useState(() => getMonthStart(getDateOnly(new Date())));
   const [selectedDate, setSelectedDate] = useState(() => getDateOnly(new Date()));
+  const [isTimelineExpanded, setIsTimelineExpanded] = useState(true);
 
   const habitsMap = useHabitStore((s) => s.habits);
   const logs = useHabitStore((s) => s.logs);
@@ -155,6 +156,13 @@ export default function ToolsHomeScreen() {
     [selectedDate]
   );
 
+  const calendarHintText = useMemo(() => {
+    if (!isTimelineExpanded) {
+      return selectedRecordCount > 0 ? `这天有 ${selectedRecordCount} 条记录，点击日期展开` : '这天还没有记录，点击日期展开';
+    }
+    return selectedRecordCount > 0 ? `这天有 ${selectedRecordCount} 条生活记录` : '这天还没有记录';
+  }, [isTimelineExpanded, selectedRecordCount]);
+
   const shiftVisibleMonth = (offset: number) => {
     setVisibleMonth((currentMonth) => {
       const nextMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + offset, 1);
@@ -166,7 +174,13 @@ export default function ToolsHomeScreen() {
   };
 
   const selectCalendarDay = (day: CalendarDay) => {
+    if (day.dateISO === selectedDateISO) {
+      setIsTimelineExpanded((expanded) => !expanded);
+      return;
+    }
+
     setSelectedDate(day.date);
+    setIsTimelineExpanded(true);
     if (!day.isCurrentMonth) {
       setVisibleMonth(getMonthStart(day.date));
     }
@@ -289,56 +303,56 @@ export default function ToolsHomeScreen() {
 
         <View style={[styles.calendarHint, { backgroundColor: palette.accentSoft, borderColor: palette.border }]}>
           <ThemedText style={[styles.calendarHintDate, { color: palette.accentStrong }]}>{selectedDateLabel}</ThemedText>
-          <ThemedText style={[styles.calendarHintText, { color: palette.muted }]}>
-            {selectedRecordCount > 0 ? `这天有 ${selectedRecordCount} 条生活记录` : '这天还没有记录'}
-          </ThemedText>
+          <ThemedText style={[styles.calendarHintText, { color: palette.muted }]}>{calendarHintText}</ThemedText>
         </View>
       </SectionCard>
 
-      <SectionCard elevated style={styles.timelineCard}>
-        <View style={styles.sectionTop}>
-          <View>
-            <ThemedText style={[styles.briefMeta, { color: palette.muted }]}>SELECTED DAY</ThemedText>
-            <ThemedText style={styles.sectionTitle}>生活时间线</ThemedText>
-          </View>
-          <ThemedText style={[styles.countText, { color: palette.muted }]}>{selectedRecordCount} 条</ThemedText>
-        </View>
-
-        {selectedTimelineRecords.length === 0 ? (
-          <View style={[styles.timelineEmpty, { backgroundColor: palette.input, borderColor: palette.border }]}>
-            <ThemedText style={[styles.emptyMark, { color: palette.accentStrong }]}>◇</ThemedText>
-            <View style={styles.timelineEmptyText}>
-              <ThemedText style={styles.timelineEmptyTitle}>这天还没有记录</ThemedText>
-              <ThemedText style={[styles.sectionSub, { color: palette.muted }]}>完成待办或习惯打卡后，会自动留在这里。</ThemedText>
+      {isTimelineExpanded ? (
+        <SectionCard elevated style={styles.timelineCard}>
+          <View style={styles.sectionTop}>
+            <View>
+              <ThemedText style={[styles.briefMeta, { color: palette.muted }]}>SELECTED DAY</ThemedText>
+              <ThemedText style={styles.sectionTitle}>生活时间线</ThemedText>
             </View>
+            <ThemedText style={[styles.countText, { color: palette.muted }]}>{selectedRecordCount} 条</ThemedText>
           </View>
-        ) : (
-          <View style={styles.timelineList}>
-            <View style={[styles.timelineRail, { backgroundColor: palette.accentSoft }]} />
-            {selectedTimelineRecords.map((record) => (
-              <View key={record.id} style={styles.timelineItem}>
-                <View style={[styles.timelineNode, { backgroundColor: palette.card, borderColor: palette.accentStrong }]} />
-                <View style={[styles.timelineRecordCard, { backgroundColor: palette.input, borderColor: palette.border }]}>
-                  <View style={styles.timelineRecordTop}>
-                    <ThemedText style={[styles.timelineTime, { color: palette.accentStrong }]}>{formatTimelineTime(record)}</ThemedText>
-                    <View style={styles.timelineTags}>
-                      {record.category ? (
-                        <View style={[styles.timelineTag, { backgroundColor: palette.accentSoft, borderColor: palette.border }]}>
-                          <ThemedText style={[styles.timelineTagText, { color: palette.accentStrong }]}>{record.category}</ThemedText>
+
+          {selectedTimelineRecords.length === 0 ? (
+            <View style={[styles.timelineEmpty, { backgroundColor: palette.input, borderColor: palette.border }]}>
+              <ThemedText style={[styles.emptyMark, { color: palette.accentStrong }]}>◇</ThemedText>
+              <View style={styles.timelineEmptyText}>
+                <ThemedText style={styles.timelineEmptyTitle}>这天还没有记录</ThemedText>
+                <ThemedText style={[styles.sectionSub, { color: palette.muted }]}>完成待办或习惯打卡后，会自动留在这里。</ThemedText>
+              </View>
+            </View>
+          ) : (
+            <View style={styles.timelineList}>
+              <View style={[styles.timelineRail, { backgroundColor: palette.accentSoft }]} />
+              {selectedTimelineRecords.map((record) => (
+                <View key={record.id} style={styles.timelineItem}>
+                  <View style={[styles.timelineNode, { backgroundColor: palette.card, borderColor: palette.accentStrong }]} />
+                  <View style={[styles.timelineRecordCard, { backgroundColor: palette.input, borderColor: palette.border }]}>
+                    <View style={styles.timelineRecordTop}>
+                      <ThemedText style={[styles.timelineTime, { color: palette.accentStrong }]}>{formatTimelineTime(record)}</ThemedText>
+                      <View style={styles.timelineTags}>
+                        {record.category ? (
+                          <View style={[styles.timelineTag, { backgroundColor: palette.accentSoft, borderColor: palette.border }]}>
+                            <ThemedText style={[styles.timelineTagText, { color: palette.accentStrong }]}>{record.category}</ThemedText>
+                          </View>
+                        ) : null}
+                        <View style={[styles.timelineTag, { backgroundColor: palette.cardAlt, borderColor: palette.border }]}>
+                          <ThemedText style={[styles.timelineTagText, { color: palette.muted }]}>{SOURCE_LABELS[record.source]}</ThemedText>
                         </View>
-                      ) : null}
-                      <View style={[styles.timelineTag, { backgroundColor: palette.cardAlt, borderColor: palette.border }]}>
-                        <ThemedText style={[styles.timelineTagText, { color: palette.muted }]}>{SOURCE_LABELS[record.source]}</ThemedText>
                       </View>
                     </View>
+                    <ThemedText style={styles.timelineTitle}>{record.title}</ThemedText>
                   </View>
-                  <ThemedText style={styles.timelineTitle}>{record.title}</ThemedText>
                 </View>
-              </View>
-            ))}
-          </View>
-        )}
-      </SectionCard>
+              ))}
+            </View>
+          )}
+        </SectionCard>
+      ) : null}
 
       <SectionCard style={styles.quickPanel}>
         <View style={styles.sectionTop}>
