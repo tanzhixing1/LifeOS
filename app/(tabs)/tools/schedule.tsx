@@ -1,5 +1,7 @@
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import React, { useMemo } from 'react';
 import { FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -12,6 +14,9 @@ export default function ToolsScheduleScreen() {
   const cardBorder = useThemeColor({ light: '#D8D0C7', dark: '#252A31' }, 'text');
   const mutedText = useThemeColor({ light: '#7A756F', dark: '#A7B0BE' }, 'text');
   const accent = useThemeColor({ light: '#6D8AAE', dark: '#88A9D4' }, 'tint');
+  const tabBarHeight = useBottomTabBarHeight();
+  const insets = useSafeAreaInsets();
+  const listBottomPadding = tabBarHeight + insets.bottom + 40;
 
   const items = useTodoStore((s) => s.items) as Pick<Todo, 'id' | 'title' | 'due' | 'tags' | 'done'>[];
   const toggleStore = useTodoStore((s) => s.toggle);
@@ -52,7 +57,7 @@ export default function ToolsScheduleScreen() {
       <FlatList
         data={items}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[styles.listContent, { paddingBottom: listBottomPadding }]}
         ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
         renderItem={({ item }) => (
           <Pressable

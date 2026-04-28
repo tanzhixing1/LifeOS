@@ -1,6 +1,8 @@
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { router } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -14,6 +16,9 @@ export default function ToolsHomeScreen() {
   const cardBorder = useThemeColor({ light: '#D8D0C7', dark: '#2A3036' }, 'text');
   const mutedText = useThemeColor({ light: '#7A756F', dark: '#A7B0BE' }, 'text');
   const accent = useThemeColor({ light: '#D1BBDE', dark: '#D1BBDE' }, 'tint');
+  const tabBarHeight = useBottomTabBarHeight();
+  const insets = useSafeAreaInsets();
+  const scrollBottomPadding = tabBarHeight + insets.bottom + 40;
 
   const habitsMap = useHabitStore((s) => s.habits);
   const logs = useHabitStore((s) => s.logs);
@@ -101,7 +106,7 @@ export default function ToolsHomeScreen() {
         ) : null}
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.scrollContent, { paddingBottom: scrollBottomPadding }]}>
         <View style={[styles.card, { backgroundColor: cardBg, borderColor: cardBorder }]}>
           <View style={styles.helloTop}>
             <ThemedText style={styles.cardTitle}>Hello World（别装作很忙）</ThemedText>

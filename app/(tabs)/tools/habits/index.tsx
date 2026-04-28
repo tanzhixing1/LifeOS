@@ -1,5 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import {
   Alert,
   FlatList,
@@ -13,6 +14,7 @@ import {
   View,
 } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { IconGrid } from '@/components/icon-grid';
 import { ThemedText } from '@/components/themed-text';
@@ -28,6 +30,10 @@ export default function HabitsScreen() {
   const cardBorder = useThemeColor({ light: '#D8D0C7', dark: '#2A3036' }, 'text');
   const mutedText = useThemeColor({ light: '#7A756F', dark: '#A7B0BE' }, 'text');
   const accent = useThemeColor({ light: '#D1BBDE', dark: '#D1BBDE' }, 'tint');
+  const tabBarHeight = useBottomTabBarHeight();
+  const insets = useSafeAreaInsets();
+  const listBottomPadding = tabBarHeight + insets.bottom + 56;
+  const fabBottom = tabBarHeight + insets.bottom + 18;
 
   const habitsMap = useHabitStore((s) => s.habits);
   const logs = useHabitStore((s) => s.logs);
@@ -119,7 +125,7 @@ export default function HabitsScreen() {
       <FlatList
         data={habits}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[styles.listContent, { paddingBottom: listBottomPadding }]}
         ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
         renderItem={({ item }) => (
           <HabitSwipeRow
@@ -138,7 +144,7 @@ export default function HabitsScreen() {
       <Pressable
         accessibilityRole="button"
         onPress={openCreateModal}
-        style={({ pressed }) => [styles.fab, { backgroundColor: accent, transform: [{ scale: pressed ? 0.98 : 1 }] }]}>
+        style={({ pressed }) => [styles.fab, { backgroundColor: accent, bottom: fabBottom, transform: [{ scale: pressed ? 0.98 : 1 }] }]}>
         <ThemedText style={styles.fabText}>+</ThemedText>
       </Pressable>
 

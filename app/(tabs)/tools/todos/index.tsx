@@ -2,6 +2,8 @@ import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Alert, FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { TodoCreateModal } from '@/components/todo-create-modal';
 import { ThemedText } from '@/components/themed-text';
@@ -10,16 +12,28 @@ import { UI_ICONS } from '@/core/constants/ui-icons';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { type Todo, useTodoStore } from '@/stores';
 
+type TodoFilter = 'all' | 'active' | 'done';
+
+const TODO_FILTER_OPTIONS: { value: TodoFilter; label: string }[] = [
+  { value: 'all', label: '全部' },
+  { value: 'active', label: '待办' },
+  { value: 'done', label: '已完成' },
+];
+
 export default function TodosScreen() {
   const pageBg = useThemeColor({ light: '#F2EEE8', dark: '#171819' }, 'background');
   const cardBg = useThemeColor({ light: '#F7F3EE', dark: '#1C1F22' }, 'background');
   const cardBorder = useThemeColor({ light: '#D8D0C7', dark: '#252A31' }, 'text');
   const mutedText = useThemeColor({ light: '#7A756F', dark: '#A7B0BE' }, 'text');
   const accent = useThemeColor({ light: '#D1BBDE', dark: '#D1BBDE' }, 'tint');
+  const tabBarHeight = useBottomTabBarHeight();
+  const insets = useSafeAreaInsets();
+  const listBottomPadding = tabBarHeight + insets.bottom + 40;
 
   const params = useLocalSearchParams();
   const [modalVisible, setModalVisible] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [filter, setFilter] = useState<TodoFilter>('active');
 
   const items = useTodoStore((s) => s.items) as Pick<Todo, 'id' | 'title' | 'dueAt' | 'category' | 'iconId' | 'done'>[];
   const toggleStore = useTodoStore((s) => s.toggle);
@@ -44,6 +58,12 @@ export default function TodosScreen() {
     const done = items.filter((x) => x.done).length;
     return { done, total: items.length };
   }, [items]);
+
+  const filteredItems = useMemo(() => {
+    if (filter === 'active') return items.filter((x) => !x.done);
+    if (filter === 'done') return items.filter((x) => x.done);
+    return items;
+  }, [filter, items]);
 
   const editingTodo = useMemo(() => items.find((x) => x.id === editingId) ?? null, [editingId, items]);
 
@@ -98,12 +118,35 @@ export default function TodosScreen() {
             今日完成：{stats.done}/{stats.total}（点一行就算你做了）
           </ThemedText>
         </View>
+        <View style={styles.filterRow}>
+          {TODO_FILTER_OPTIONS.map((option) => {
+            const isActive = option.value === filter;
+
+            return (
+              <Pressable
+                key={option.value}
+                onPress={() => setFilter(option.value)}
+                style={({ pressed }) => [
+                  styles.filterChip,
+                  {
+                    backgroundColor: isActive ? accent : 'transparent',
+                    borderColor: isActive ? accent : cardBorder,
+                    opacity: pressed ? 0.86 : 1,
+                  },
+                ]}>
+                <ThemedText style={[styles.filterChipText, { color: isActive ? '#171819' : mutedText }]}>
+                  {option.label}
+                </ThemedText>
+              </Pressable>
+            );
+          })}
+        </View>
       </View>
 
       <FlatList
-        data={items}
+        data={filteredItems}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[styles.listContent, { paddingBottom: listBottomPadding }]}
         ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
         renderItem={({ item }) => (
           <TodoSwipeRow
@@ -208,6 +251,9 @@ const styles = StyleSheet.create({
   backText: { fontSize: 13, lineHeight: 16, fontWeight: '900', width: 40 },
   subRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
   hint: { fontSize: 13, lineHeight: 16, fontWeight: '700' },
+  filterRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  filterChip: { flex: 1, borderWidth: 1.5, borderRadius: 999, paddingVertical: 8, alignItems: 'center', justifyContent: 'center' },
+  filterChipText: { fontSize: 13, lineHeight: 16, fontWeight: '900' },
   addChip: { borderWidth: 1.5, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999 },
   addChipText: { fontSize: 13, lineHeight: 16, fontWeight: '900' },
   listContent: { paddingTop: 6, paddingBottom: 18 },
