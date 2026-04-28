@@ -5,6 +5,15 @@ export { useHabitStore, selectHabitCards, type HabitCard, type Habit, type Habit
 export { useTodoStore, type Todo } from './todoStore';
 export { useGameStore } from './gameStore';
 export { useAIStore } from './aiStore';
+export {
+  useFragmentStore,
+  type FragmentType,
+  type InspirationFragment,
+  type LabFragment,
+  type MoodFragment,
+  type MoodIntensity,
+  type MoodKind,
+} from './fragmentStore';
 
 export type TodaySummary = {
   habitsDoneCount: number;

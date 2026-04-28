@@ -69,8 +69,6 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="gearshape.fill" color={color} />,
         }}
       />
-      <Tabs.Screen name="lab/mood" options={{ href: null }} />
-      <Tabs.Screen name="lab/inspiration" options={{ href: null }} />
     </Tabs>
   );
 }
