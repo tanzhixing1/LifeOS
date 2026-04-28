@@ -1,15 +1,18 @@
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Alert, FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
-import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { TodoCreateModal } from '@/components/todo-create-modal';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
+import { AppChip } from '@/core/ui/AppChip';
+import { ScreenScaffold } from '@/core/ui/ScreenScaffold';
+import { SectionCard } from '@/core/ui/SectionCard';
+import { uiTokens } from '@/core/theme/tokens';
 import { UI_ICONS } from '@/core/constants/ui-icons';
-import { useThemeColor } from '@/hooks/use-theme-color';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { type Todo, useTodoStore } from '@/stores';
 
 type TodoFilter = 'all' | 'active' | 'done';
@@ -21,14 +24,13 @@ const TODO_FILTER_OPTIONS: { value: TodoFilter; label: string }[] = [
 ];
 
 export default function TodosScreen() {
-  const pageBg = useThemeColor({ light: '#F2EEE8', dark: '#171819' }, 'background');
-  const cardBg = useThemeColor({ light: '#F7F3EE', dark: '#1C1F22' }, 'background');
-  const cardBorder = useThemeColor({ light: '#D8D0C7', dark: '#252A31' }, 'text');
-  const mutedText = useThemeColor({ light: '#7A756F', dark: '#A7B0BE' }, 'text');
-  const accent = useThemeColor({ light: '#D1BBDE', dark: '#D1BBDE' }, 'tint');
+  const theme = useColorScheme() ?? 'light';
+  const palette = uiTokens.colors[theme];
+  const accent = palette.accent;
+  const reportAccent = theme === 'light' ? '#6D8AAE' : '#88A9D4';
   const tabBarHeight = useBottomTabBarHeight();
   const insets = useSafeAreaInsets();
-  const listBottomPadding = tabBarHeight + insets.bottom + 40;
+  const listBottomPadding = tabBarHeight + insets.bottom + uiTokens.layout.tabBarExtraPadding;
 
   const params = useLocalSearchParams();
   const [modalVisible, setModalVisible] = useState(false);
@@ -56,7 +58,8 @@ export default function TodosScreen() {
 
   const stats = useMemo(() => {
     const done = items.filter((x) => x.done).length;
-    return { done, total: items.length };
+    const active = items.length - done;
+    return { active, done, total: items.length };
   }, [items]);
 
   const filteredItems = useMemo(() => {
@@ -97,49 +100,37 @@ export default function TodosScreen() {
   }
 
   return (
-    <ThemedView style={[styles.screen, { backgroundColor: pageBg }]}>
+    <ScreenScaffold>
       <View style={styles.header}>
         <View style={styles.headerRow}>
           <Pressable onPress={() => router.back()} style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1 }]}>
-            <ThemedText style={[styles.backText, { color: mutedText }]}>返回</ThemedText>
+            <ThemedText style={[styles.backText, { color: palette.muted }]}>返回</ThemedText>
           </Pressable>
-          <ThemedText style={styles.bigTitle}>待办</ThemedText>
-          <Pressable
-            onPress={openCreateModal}
-            style={({ pressed }) => [
-              styles.addChip,
-              { borderColor: accent, opacity: pressed ? 0.9 : 1 },
-            ]}>
-            <ThemedText style={[styles.addChipText, { color: accent }]}>+ 新建</ThemedText>
-          </Pressable>
+          <View style={styles.titleWrap}>
+            <ThemedText style={[styles.kicker, { color: reportAccent }]}>TASK LIST</ThemedText>
+            <ThemedText style={styles.bigTitle}>待办</ThemedText>
+          </View>
+          <AppChip title="+ 新建" onPress={openCreateModal} style={styles.addChip} />
         </View>
-        <View style={styles.subRow}>
-          <ThemedText style={[styles.hint, { color: mutedText }]}>
-            今日完成：{stats.done}/{stats.total}（点一行就算你做了）
-          </ThemedText>
-        </View>
-        <View style={styles.filterRow}>
-          {TODO_FILTER_OPTIONS.map((option) => {
-            const isActive = option.value === filter;
 
-            return (
-              <Pressable
-                key={option.value}
-                onPress={() => setFilter(option.value)}
-                style={({ pressed }) => [
-                  styles.filterChip,
-                  {
-                    backgroundColor: isActive ? accent : 'transparent',
-                    borderColor: isActive ? accent : cardBorder,
-                    opacity: pressed ? 0.86 : 1,
-                  },
-                ]}>
-                <ThemedText style={[styles.filterChipText, { color: isActive ? '#171819' : mutedText }]}>
-                  {option.label}
-                </ThemedText>
-              </Pressable>
-            );
-          })}
+        <View style={[styles.summaryStrip, { borderColor: palette.border, backgroundColor: palette.input }]}>
+          <ThemedText style={[styles.summaryText, { color: palette.muted }]}>未完成 {stats.active}</ThemedText>
+          <View style={[styles.summaryDot, { backgroundColor: palette.border }]} />
+          <ThemedText style={[styles.summaryText, { color: palette.muted }]}>已完成 {stats.done}</ThemedText>
+          <View style={[styles.summaryDot, { backgroundColor: palette.border }]} />
+          <ThemedText style={[styles.summaryText, { color: palette.muted }]}>总计 {stats.total}</ThemedText>
+        </View>
+
+        <View style={styles.filterRow}>
+          {TODO_FILTER_OPTIONS.map((option) => (
+            <AppChip
+              key={option.value}
+              title={option.label}
+              selected={option.value === filter}
+              onPress={() => setFilter(option.value)}
+              style={styles.filterChip}
+            />
+          ))}
         </View>
       </View>
 
@@ -147,14 +138,24 @@ export default function TodosScreen() {
         data={filteredItems}
         keyExtractor={(item) => item.id}
         contentContainerStyle={[styles.listContent, { paddingBottom: listBottomPadding }]}
-        ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
+        ItemSeparatorComponent={() => <View style={{ height: uiTokens.spacing.sm }} />}
+        ListEmptyComponent={
+          <EmptyTaskState
+            accent={reportAccent}
+            mutedText={palette.muted}
+            borderColor={palette.border}
+            backgroundColor={palette.input}
+            filter={filter}
+          />
+        }
         renderItem={({ item }) => (
           <TodoSwipeRow
             item={item}
-            cardBg={cardBg}
-            cardBorder={cardBorder}
-            mutedText={mutedText}
+            cardBg={palette.cardAlt}
+            cardBorder={palette.border}
+            mutedText={palette.muted}
             accent={accent}
+            reportAccent={reportAccent}
             iconLabel={iconsById.get(item.iconId) ?? iconsById.get('default') ?? ''}
             dueLabel={formatDueAt(item.dueAt)}
             onEdit={openEditModal}
@@ -165,7 +166,7 @@ export default function TodosScreen() {
       />
 
       <TodoCreateModal visible={modalVisible} onRequestClose={closeModal} editingTodo={editingTodo} onCreated={() => {}} />
-    </ThemedView>
+    </ScreenScaffold>
   );
 }
 
@@ -177,6 +178,7 @@ type TodoSwipeRowProps = {
   cardBorder: string;
   mutedText: string;
   accent: string;
+  reportAccent: string;
   iconLabel: string;
   dueLabel: string;
   onEdit: (id: string) => void;
@@ -184,7 +186,7 @@ type TodoSwipeRowProps = {
   onDelete: (id: string, title: string, onConfirmed?: () => void) => void;
 };
 
-function TodoSwipeRow({ item, cardBg, cardBorder, mutedText, accent, iconLabel, dueLabel, onEdit, onToggle, onDelete }: TodoSwipeRowProps) {
+function TodoSwipeRow({ item, cardBg, cardBorder, mutedText, accent, reportAccent, iconLabel, dueLabel, onEdit, onToggle, onDelete }: TodoSwipeRowProps) {
   const swipeRef = React.useRef<Swipeable>(null);
   const toggleLabel = item.done ? '取消完成' : '完成';
 
@@ -218,59 +220,87 @@ function TodoSwipeRow({ item, cardBg, cardBorder, mutedText, accent, iconLabel, 
         onPress={() => onEdit(item.id)}
         style={({ pressed }) => [
           styles.card,
-          { backgroundColor: cardBg, borderColor: cardBorder, opacity: pressed ? 0.92 : 1 },
+          { backgroundColor: cardBg, borderColor: item.done ? accent : cardBorder, opacity: pressed ? 0.92 : 1 },
         ]}>
         <View style={styles.cardLeft}>
           <View
             style={[
               styles.dot,
-              { backgroundColor: item.done ? accent : 'transparent', borderColor: item.done ? accent : cardBorder },
+              { backgroundColor: item.done ? accent : 'transparent', borderColor: item.done ? accent : reportAccent },
             ]}
           />
           <View style={[styles.iconBubble, { borderColor: cardBorder }]}>
             <ThemedText style={styles.iconText}>{iconLabel}</ThemedText>
           </View>
           <View style={styles.cardText}>
-            <ThemedText style={styles.cardTitle}>{item.title}</ThemedText>
+            <ThemedText style={[styles.cardTitle, item.done ? styles.doneTitle : undefined]}>{item.title}</ThemedText>
             <ThemedText style={[styles.cardSubtitle, { color: mutedText }]}>
               {dueLabel} · {item.category}
             </ThemedText>
           </View>
         </View>
-        <ThemedText style={[styles.status, { color: item.done ? accent : mutedText }]}>{item.done ? '已完成' : '待办'}</ThemedText>
+        <View style={[styles.statusPill, { borderColor: item.done ? accent : cardBorder }]}>
+          <ThemedText style={[styles.status, { color: item.done ? accent : mutedText }]}>{item.done ? '已完成' : '待办'}</ThemedText>
+        </View>
       </Pressable>
     </Swipeable>
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, paddingHorizontal: 18, paddingTop: 18 },
-  header: { paddingTop: 4, paddingBottom: 12, gap: 10 },
-  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  bigTitle: { fontSize: 26, fontWeight: '900', letterSpacing: 0.2, textAlign: 'center' },
-  backText: { fontSize: 13, lineHeight: 16, fontWeight: '900', width: 40 },
-  subRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
-  hint: { fontSize: 13, lineHeight: 16, fontWeight: '700' },
-  filterRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  filterChip: { flex: 1, borderWidth: 1.5, borderRadius: 999, paddingVertical: 8, alignItems: 'center', justifyContent: 'center' },
-  filterChipText: { fontSize: 13, lineHeight: 16, fontWeight: '900' },
-  addChip: { borderWidth: 1.5, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999 },
-  addChipText: { fontSize: 13, lineHeight: 16, fontWeight: '900' },
-  listContent: { paddingTop: 6, paddingBottom: 18 },
+function EmptyTaskState({
+  accent,
+  mutedText,
+  borderColor,
+  backgroundColor,
+  filter,
+}: {
+  accent: string;
+  mutedText: string;
+  borderColor: string;
+  backgroundColor: string;
+  filter: TodoFilter;
+}) {
+  const message = filter === 'done' ? '还没有完成记录。先完成一件小事，给今天留个证据。' : '这里暂时很清爽。可以新建一件真正要做的小事。';
+  return (
+    <SectionCard style={[styles.emptyCard, { borderColor, backgroundColor }]}>
+      <ThemedText style={[styles.emptyMark, { color: accent }]}>◇</ThemedText>
+      <ThemedText style={[styles.emptyText, { color: mutedText }]}>{message}</ThemedText>
+    </SectionCard>
+  );
+}
 
-  card: { borderWidth: 1, borderRadius: 18, padding: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
-  cardLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
+const styles = StyleSheet.create({
+  header: { paddingTop: uiTokens.layout.headerPaddingTop, paddingBottom: uiTokens.spacing.md, gap: uiTokens.spacing.md },
+  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: uiTokens.spacing.md },
+  titleWrap: { alignItems: 'center', gap: 2, flex: 1 },
+  kicker: { ...uiTokens.typography.meta, letterSpacing: 1.1 },
+  bigTitle: uiTokens.typography.pageTitle,
+  backText: { ...uiTokens.typography.chip, width: 42 },
+  addChip: { width: 68, paddingHorizontal: 0 },
+  summaryStrip: { borderWidth: 1, borderRadius: uiTokens.radius.md, paddingVertical: uiTokens.spacing.sm, paddingHorizontal: uiTokens.spacing.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: uiTokens.spacing.sm },
+  summaryText: { fontSize: 12, lineHeight: 16, fontWeight: '900' },
+  summaryDot: { width: 4, height: 4, borderRadius: uiTokens.radius.pill },
+  filterRow: { flexDirection: 'row', alignItems: 'center', gap: uiTokens.spacing.sm },
+  filterChip: { flex: 1 },
+  listContent: { paddingTop: 2 },
+  card: { borderWidth: 1, borderRadius: uiTokens.radius.lg, padding: uiTokens.spacing.lg, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: uiTokens.spacing.md },
+  cardLeft: { flexDirection: 'row', alignItems: 'center', gap: uiTokens.spacing.md, flex: 1 },
   dot: { width: 14, height: 14, borderRadius: 6, borderWidth: 2 },
-  iconBubble: { width: 34, height: 34, borderRadius: 14, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  iconBubble: { width: 34, height: 34, borderRadius: uiTokens.radius.md, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   iconText: { fontSize: 18, lineHeight: 20, fontWeight: '900' },
   cardText: { flex: 1, gap: 4 },
   cardTitle: { fontSize: 17, fontWeight: '900', lineHeight: 22 },
-  cardSubtitle: { fontSize: 13, lineHeight: 18, fontWeight: '700' },
-  status: { fontSize: 13, lineHeight: 16, fontWeight: '900' },
+  doneTitle: { opacity: 0.62, textDecorationLine: 'line-through' },
+  cardSubtitle: { fontSize: 13, lineHeight: 18, fontWeight: '800' },
+  statusPill: { borderWidth: 1, borderRadius: uiTokens.radius.pill, paddingHorizontal: uiTokens.spacing.sm, paddingVertical: 5 },
+  status: { fontSize: 12, lineHeight: 14, fontWeight: '900' },
   swipeActionWrap: { width: 86, overflow: 'hidden' },
   leftActionWrap: { alignItems: 'flex-start' },
   rightActionWrap: { alignItems: 'flex-end' },
-  swipeAction: { width: 76, minHeight: 76, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
-  deleteAction: { backgroundColor: '#D96C6C' },
+  swipeAction: { width: 76, minHeight: 76, borderRadius: uiTokens.radius.lg, alignItems: 'center', justifyContent: 'center' },
+  deleteAction: { backgroundColor: uiTokens.colors.light.danger },
   swipeActionText: { color: '#fff', fontSize: 13, lineHeight: 16, fontWeight: '900' },
+  emptyCard: { alignItems: 'center', marginTop: uiTokens.spacing.md },
+  emptyMark: { fontSize: 24, lineHeight: 28, fontWeight: '900' },
+  emptyText: { fontSize: 13, lineHeight: 19, fontWeight: '800', textAlign: 'center' },
 });

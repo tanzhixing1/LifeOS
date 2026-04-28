@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
+import React, { useCallback, useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -26,6 +27,7 @@ export default function SettingsHomeScreen() {
 
   const [testVisible, setTestVisible] = useState(false);
   const [backupVisible, setBackupVisible] = useState(false);
+  const [backupSnapshot, setBackupSnapshot] = useState(() => buildBackupSnapshot());
   const [backupJSON, setBackupJSON] = useState('');
 
   const todayISO = useMemo(() => {
@@ -36,16 +38,28 @@ export default function SettingsHomeScreen() {
     return `${y}-${m}-${day}`;
   }, []);
 
-  const backupSummary = buildBackupSummary();
+  const backupSummary = useMemo(() => buildBackupSummary(backupSnapshot), [backupSnapshot]);
   const todayCount = dailyCountByDateISO[todayISO] ?? 0;
   const isMutedToday = mutedDateISO === todayISO;
   const attrSummary = Object.entries(backupSummary.gameAttrs)
     .map(([key, value]) => `${key} ${value}`)
     .join(' / ');
 
-  function openBackupPreview() {
+  const refreshBackupPreview = useCallback(() => {
     const snapshot = buildBackupSnapshot();
+    setBackupSnapshot(snapshot);
     setBackupJSON(formatBackupJSON(snapshot));
+    return snapshot;
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      refreshBackupPreview();
+    }, [refreshBackupPreview])
+  );
+
+  function openBackupPreview() {
+    refreshBackupPreview();
     setBackupVisible(true);
   }
 
@@ -83,6 +97,10 @@ export default function SettingsHomeScreen() {
 
         <View style={[styles.summaryPanel, { backgroundColor: palette.input, borderColor: palette.border }]}>
           <SummaryRow label="Todo" value={`${backupSummary.todosTotal} 条 / 已完成 ${backupSummary.todosDone}`} mutedText={palette.muted} />
+          <SummaryRow label="Deleted todos" value={`${backupSummary.todosDeletedTotal} 条`} mutedText={palette.muted} />
+          <SummaryRow label="Timeline" value={`${backupSummary.dailyTimelineRecordsTotal} 条`} mutedText={palette.muted} />
+          <SummaryRow label="Active timeline" value={`${backupSummary.dailyTimelineActiveRecordsTotal} 条`} mutedText={palette.muted} />
+          <SummaryRow label="Deleted timeline" value={`${backupSummary.dailyTimelineDeletedRecordsTotal} 条`} mutedText={palette.muted} />
           <SummaryRow label="Habit" value={`${backupSummary.habitsTotal} 个 / 已归档 ${backupSummary.habitsArchived}`} mutedText={palette.muted} />
           <SummaryRow label="Game" value={attrSummary} mutedText={palette.muted} />
           <SummaryRow label="Location" value={backupSummary.gameLocation ?? '未记录'} mutedText={palette.muted} />

@@ -1,24 +1,22 @@
-import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { router } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { useThemeColor } from '@/hooks/use-theme-color';
+import { AppButton } from '@/core/ui/AppButton';
+import { AppChip } from '@/core/ui/AppChip';
+import { ScreenScaffold } from '@/core/ui/ScreenScaffold';
+import { SectionCard } from '@/core/ui/SectionCard';
+import { uiTokens } from '@/core/theme/tokens';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { selectHabitCards, useHabitStore, useTodoStore } from '@/stores';
 import { useMessengerStore } from '@/stores/messengerStore';
 
 export default function ToolsHomeScreen() {
-  const pageBg = useThemeColor({ light: '#F2EEE8', dark: '#171819' }, 'background');
-  const cardBg = useThemeColor({ light: '#F7F3EE', dark: '#1C1F22' }, 'background');
-  const cardBorder = useThemeColor({ light: '#D8D0C7', dark: '#2A3036' }, 'text');
-  const mutedText = useThemeColor({ light: '#7A756F', dark: '#A7B0BE' }, 'text');
-  const accent = useThemeColor({ light: '#D1BBDE', dark: '#D1BBDE' }, 'tint');
-  const tabBarHeight = useBottomTabBarHeight();
-  const insets = useSafeAreaInsets();
-  const scrollBottomPadding = tabBarHeight + insets.bottom + 40;
+  const theme = useColorScheme() ?? 'light';
+  const palette = uiTokens.colors[theme];
+  const reportAccent = theme === 'light' ? '#6D8AAE' : '#88A9D4';
+  const [quickOpen, setQuickOpen] = useState(false);
 
   const habitsMap = useHabitStore((s) => s.habits);
   const logs = useHabitStore((s) => s.logs);
@@ -26,9 +24,7 @@ export default function ToolsHomeScreen() {
 
   const todoItems = useTodoStore((s) => s.items);
   const toggleTodo = useTodoStore((s) => s.toggle);
-
   const trigger = useMessengerStore((s) => s.trigger);
-  const [quickOpen, setQuickOpen] = useState(false);
 
   const todayText = useMemo(() => {
     const d = new Date();
@@ -43,6 +39,12 @@ export default function ToolsHomeScreen() {
     const percent = total === 0 ? 0 : Math.round((done / total) * 100);
     return { done, total, percent };
   }, [habits]);
+
+  const todoStats = useMemo(() => {
+    const active = todoItems.filter((t) => !t.done).length;
+    const done = todoItems.filter((t) => t.done).length;
+    return { active, done, total: todoItems.length };
+  }, [todoItems]);
 
   const topTodos = useMemo(() => todoItems.filter((t) => !t.done).slice(0, 5), [todoItems]);
 
@@ -70,170 +72,167 @@ export default function ToolsHomeScreen() {
   }, [todoItems, habitStats.done, trigger]);
 
   return (
-    <ThemedView style={[styles.screen, { backgroundColor: pageBg }]}>
+    <ScreenScaffold scroll contentContainerStyle={styles.content}>
       <View style={styles.header}>
-        <ThemedText style={styles.bigTitle}>工具（高效但别太认真）</ThemedText>
+        <View style={[styles.issueLine, { backgroundColor: palette.border }]} />
+        <ThemedText style={[styles.kicker, { color: reportAccent }]}>LIFEOS DAILY BRIEFING</ThemedText>
+        <ThemedText style={styles.bigTitle}>今日工具简报</ThemedText>
+        <ThemedText style={[styles.subtitle, { color: palette.muted }]}>{todayText}</ThemedText>
       </View>
 
-      <View style={styles.quickBar}>
-        <Pressable
-          onPress={() => setQuickOpen((v) => !v)}
-          style={({ pressed }) => [
-            styles.quickChip,
-            { backgroundColor: accent, opacity: pressed ? 0.92 : 1 },
-          ]}>
-          <ThemedText style={styles.quickChipText}>{quickOpen ? '收起快速新增' : '快速新增（别磨蹭）'}</ThemedText>
-        </Pressable>
-        {quickOpen ? (
-          <View style={[styles.quickPanel, { borderColor: cardBorder, backgroundColor: cardBg }]}>
-            <Pressable
-              onPress={() => {
-                setQuickOpen(false);
-                router.push('/(tabs)/tools/todos?create=1');
-              }}
-              style={({ pressed }) => [styles.quickEntry, { borderColor: cardBorder, opacity: pressed ? 0.92 : 1 }]}>
-              <ThemedText style={[styles.quickEntryText, { color: mutedText }]}>新增待办</ThemedText>
-            </Pressable>
-            <Pressable
-              onPress={() => {
-                setQuickOpen(false);
-                router.push('/(tabs)/tools/habits?create=1');
-              }}
-              style={({ pressed }) => [styles.quickEntry, { borderColor: cardBorder, opacity: pressed ? 0.92 : 1 }]}>
-              <ThemedText style={[styles.quickEntryText, { color: mutedText }]}>新增习惯</ThemedText>
-            </Pressable>
+      <SectionCard elevated style={[styles.briefCard, { borderColor: reportAccent }]}>
+        <View style={styles.briefTop}>
+          <View>
+            <ThemedText style={[styles.briefMeta, { color: palette.muted }]}>TODAY / TASKBOOK</ThemedText>
+            <ThemedText style={styles.briefTitle}>现实任务中枢</ThemedText>
           </View>
-        ) : null}
-      </View>
-
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.scrollContent, { paddingBottom: scrollBottomPadding }]}>
-        <View style={[styles.card, { backgroundColor: cardBg, borderColor: cardBorder }]}>
-          <View style={styles.helloTop}>
-            <ThemedText style={styles.cardTitle}>Hello World（别装作很忙）</ThemedText>
-            <ThemedText style={[styles.muted, { color: mutedText }]}>{todayText}</ThemedText>
-          </View>
-          <View style={styles.helloRow}>
-            <ThemedText style={[styles.muted, { color: mutedText }]}>天气：--</ThemedText>
-            <ThemedText style={[styles.muted, { color: mutedText }]}>“让我歇会吧~（你先动手）”</ThemedText>
+          <View style={[styles.briefBadge, { borderColor: reportAccent }]}>
+            <ThemedText style={[styles.briefBadgeText, { color: reportAccent }]}>NO. {String(new Date().getDate()).padStart(2, '0')}</ThemedText>
           </View>
         </View>
+        <View style={styles.statGrid}>
+          <View style={[styles.statBox, { backgroundColor: palette.input, borderColor: palette.border }]}>
+            <ThemedText style={styles.statValue}>{todoStats.active}</ThemedText>
+            <ThemedText style={[styles.statLabel, { color: palette.muted }]}>待办未完成</ThemedText>
+          </View>
+          <View style={[styles.statBox, { backgroundColor: palette.input, borderColor: palette.border }]}>
+            <ThemedText style={styles.statValue}>{habitStats.percent}%</ThemedText>
+            <ThemedText style={[styles.statLabel, { color: palette.muted }]}>今日打卡</ThemedText>
+          </View>
+        </View>
+      </SectionCard>
 
-        <Pressable
-          onPress={() => router.push('/(tabs)/tools/habits')}
-          style={({ pressed }) => [
-            styles.card,
-            { backgroundColor: cardBg, borderColor: cardBorder, opacity: pressed ? 0.92 : 1 },
-          ]}>
-          <View style={styles.cardTopRow}>
-            <ThemedText style={styles.cardTitle}>魔女能量</ThemedText>
-            <ThemedText style={[styles.muted, { color: mutedText }]}>
+      <SectionCard style={styles.quickPanel}>
+        <View style={styles.sectionTop}>
+          <View>
+            <ThemedText style={styles.sectionTitle}>快速新增</ThemedText>
+            <ThemedText style={[styles.sectionSub, { color: palette.muted }]}>少一点启动成本，多一点完成概率。</ThemedText>
+          </View>
+          <AppChip title={quickOpen ? '收起' : '展开'} selected={quickOpen} onPress={() => setQuickOpen((v) => !v)} />
+        </View>
+        {quickOpen ? (
+          <View style={styles.quickActions}>
+            <AppButton title="新增待办" variant="outline" onPress={() => router.push('/(tabs)/tools/todos?create=1')} style={styles.quickAction} />
+            <AppButton title="新增习惯" variant="outline" onPress={() => router.push('/(tabs)/tools/habits?create=1')} style={styles.quickAction} />
+          </View>
+        ) : null}
+      </SectionCard>
+
+      <Pressable onPress={() => router.push('/(tabs)/tools/habits')} style={({ pressed }) => [{ opacity: pressed ? 0.92 : 1 }]}>
+        <SectionCard elevated style={styles.sectionCard}>
+          <View style={styles.sectionTop}>
+            <View>
+              <ThemedText style={[styles.briefMeta, { color: palette.muted }]}>HABIT ENERGY</ThemedText>
+              <ThemedText style={styles.sectionTitle}>魔女能量</ThemedText>
+            </View>
+            <ThemedText style={[styles.countText, { color: palette.muted }]}>
               {habitStats.done}/{habitStats.total}
             </ThemedText>
           </View>
-
-          <View style={[styles.progressTrack, { backgroundColor: 'rgba(0,0,0,0.08)' }]}>
-            <View style={[styles.progressFill, { backgroundColor: accent, width: `${habitStats.percent}%` }]} />
+          <View style={[styles.progressTrack, { backgroundColor: palette.input }]}>
+            <View style={[styles.progressFill, { backgroundColor: reportAccent, width: `${habitStats.percent}%` }]} />
           </View>
-          <ThemedText style={[styles.muted, { color: mutedText }]}>今日打卡 {habitStats.percent}%</ThemedText>
+          <View style={styles.cardFooter}>
+            <ThemedText style={[styles.sectionSub, { color: palette.muted }]}>今日打卡完成 {habitStats.percent}%</ThemedText>
+            <AppChip title="去新建" onPress={() => router.push('/(tabs)/tools/habits?create=1')} />
+          </View>
+        </SectionCard>
+      </Pressable>
 
-          <View style={styles.cardActionsRow}>
-            <Pressable
-              onPress={() => router.push('/(tabs)/tools/habits?create=1')}
-              style={({ pressed }) => [
-                styles.smallChip,
-                { borderColor: accent, opacity: pressed ? 0.9 : 1 },
-              ]}>
-              <ThemedText style={[styles.smallChipText, { color: accent }]}>去新建（快点）</ThemedText>
-            </Pressable>
+      <SectionCard elevated style={styles.sectionCard}>
+        <Pressable onPress={() => router.push('/(tabs)/tools/todos')} style={({ pressed }) => [{ opacity: pressed ? 0.92 : 1 }]}>
+          <View style={styles.sectionTop}>
+            <View>
+              <ThemedText style={[styles.briefMeta, { color: palette.muted }]}>TASK QUEUE</ThemedText>
+              <ThemedText style={styles.sectionTitle}>魔女事务</ThemedText>
+            </View>
+            <ThemedText style={[styles.countText, { color: palette.muted }]}>未完 {todoStats.active}</ThemedText>
           </View>
         </Pressable>
 
-        <View style={[styles.card, { backgroundColor: cardBg, borderColor: cardBorder }]}>
-          <Pressable onPress={() => router.push('/(tabs)/tools/todos')} style={({ pressed }) => [{ opacity: pressed ? 0.92 : 1 }]}>
-            <View style={styles.cardTopRow}>
-              <ThemedText style={styles.cardTitle}>魔女事务</ThemedText>
-              <ThemedText style={[styles.muted, { color: mutedText }]}>今日重点 3–5</ThemedText>
+        <View style={styles.todoList}>
+          {topTodos.length === 0 ? (
+            <View style={[styles.emptyBox, { backgroundColor: palette.input, borderColor: palette.border }]}>
+              <ThemedText style={[styles.emptyMark, { color: reportAccent }]}>◇</ThemedText>
+              <ThemedText style={[styles.emptyText, { color: palette.muted }]}>今天很清爽。可以补一件真正重要的小事。</ThemedText>
             </View>
-          </Pressable>
-
-          <View style={styles.todoList}>
-            {topTodos.length === 0 ? (
-              <ThemedText style={[styles.muted, { color: mutedText }]}>今天很清爽。你最好不是在逃避。</ThemedText>
-            ) : (
-              topTodos.map((t) => (
-                <Pressable
-                  key={t.id}
-                  onPress={() => toggleTodo(t.id)}
-                  style={({ pressed }) => [
-                    styles.todoRow,
-                    { borderColor: cardBorder, opacity: pressed ? 0.92 : 1 },
-                  ]}>
-                  <View style={[styles.todoDot, { borderColor: cardBorder }]} />
-                  <View style={styles.todoText}>
-                    <ThemedText style={styles.todoTitle}>{t.title}</ThemedText>
-                    <ThemedText style={[styles.muted, { color: mutedText }]}>
-                      {(t as any).dueAt ? new Date((t as any).dueAt).toLocaleString('zh-CN', { hour: '2-digit', minute: '2-digit' }) : '无截止'}
-                    </ThemedText>
-                  </View>
-                </Pressable>
-              ))
-            )}
-          </View>
-
-          <View style={styles.cardActionsRow}>
-            <Pressable
-              onPress={() => router.push('/(tabs)/tools/todos?create=1')}
-              style={({ pressed }) => [
-                styles.smallChip,
-                { borderColor: accent, opacity: pressed ? 0.9 : 1 },
-              ]}>
-              <ThemedText style={[styles.smallChipText, { color: accent }]}>去新建（快点）</ThemedText>
-            </Pressable>
-          </View>
+          ) : (
+            topTodos.map((t, index) => (
+              <Pressable
+                key={t.id}
+                onPress={() => toggleTodo(t.id)}
+                style={({ pressed }) => [
+                  styles.todoRow,
+                  { borderColor: palette.border, backgroundColor: palette.input, opacity: pressed ? 0.92 : 1 },
+                ]}>
+                <ThemedText style={[styles.todoIndex, { color: reportAccent }]}>{String(index + 1).padStart(2, '0')}</ThemedText>
+                <View style={styles.todoText}>
+                  <ThemedText style={styles.todoTitle}>{t.title}</ThemedText>
+                  <ThemedText style={[styles.sectionSub, { color: palette.muted }]}>
+                    {(t as any).dueAt ? new Date((t as any).dueAt).toLocaleString('zh-CN', { hour: '2-digit', minute: '2-digit' }) : '无截止'}
+                  </ThemedText>
+                </View>
+              </Pressable>
+            ))
+          )}
         </View>
 
-        <View style={[styles.card, { backgroundColor: cardBg, borderColor: cardBorder }]}>
-          <ThemedText style={styles.cardTitle}>语境通知官（能吵就吵）</ThemedText>
-          <ThemedText style={[styles.muted, { color: mutedText }]}>
-            我会在你拖延、到期、完成时冒出来说两句。现在先看得到弹窗，不接 AI。
-          </ThemedText>
+        <View style={styles.cardFooter}>
+          <ThemedText style={[styles.sectionSub, { color: palette.muted }]}>已完成 {todoStats.done} / 总计 {todoStats.total}</ThemedText>
+          <AppChip title="去新建" onPress={() => router.push('/(tabs)/tools/todos?create=1')} />
         </View>
-      </ScrollView>
-    </ThemedView>
+      </SectionCard>
+
+      <SectionCard style={styles.sectionCard}>
+        <View style={styles.sectionTop}>
+          <View>
+            <ThemedText style={[styles.briefMeta, { color: palette.muted }]}>CONTEXT MESSENGER</ThemedText>
+            <ThemedText style={styles.sectionTitle}>语境通知官</ThemedText>
+          </View>
+          <ThemedText style={[styles.emptyMark, { color: reportAccent }]}>□</ThemedText>
+        </View>
+        <ThemedText style={[styles.sectionSub, { color: palette.muted }]}>
+          我会在你拖延、到期、完成时冒出来说两句。现在先看得到弹窗，不接 AI。
+        </ThemedText>
+      </SectionCard>
+    </ScreenScaffold>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, paddingHorizontal: 18, paddingTop: 18 },
-  header: { paddingTop: 4, paddingBottom: 10, gap: 8 },
-  bigTitle: { fontSize: 28, fontWeight: '900', letterSpacing: 0.2, textAlign: 'center' },
-  quickBar: { gap: 10, paddingTop: 2, paddingBottom: 6 },
-  quickChip: { borderRadius: 14, paddingVertical: 12, paddingHorizontal: 14, alignItems: 'center' },
-  quickChipText: { color: '#1D1B1E', fontSize: 14, lineHeight: 18, fontWeight: '900' },
-  quickPanel: { borderWidth: 1, borderRadius: 18, padding: 10, flexDirection: 'row', gap: 10 },
-  quickEntry: { flex: 1, borderWidth: 1, borderRadius: 14, paddingVertical: 12, alignItems: 'center' },
-  quickEntryText: { fontSize: 14, lineHeight: 18, fontWeight: '900' },
-
-  scrollContent: { paddingTop: 6, paddingBottom: 18, gap: 12 },
-
-  card: { borderWidth: 1, borderRadius: 18, padding: 14, gap: 10 },
-  cardTitle: { fontSize: 16, lineHeight: 20, fontWeight: '900' },
-  muted: { fontSize: 13, lineHeight: 18, fontWeight: '700' },
-
-  helloTop: { gap: 4 },
-  helloRow: { flexDirection: 'row', justifyContent: 'space-between' },
-
-  cardTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  progressTrack: { height: 10, borderRadius: 999, overflow: 'hidden' },
-  progressFill: { height: 10, borderRadius: 999 },
-
-  todoList: { gap: 10 },
-  todoRow: { borderWidth: 1, borderRadius: 14, paddingVertical: 10, paddingHorizontal: 12, flexDirection: 'row', gap: 10, alignItems: 'center' },
-  todoDot: { width: 14, height: 14, borderRadius: 6, borderWidth: 2 },
+  content: { gap: uiTokens.spacing.md },
+  header: { paddingTop: uiTokens.layout.headerPaddingTop, paddingBottom: uiTokens.spacing.sm, gap: uiTokens.spacing.sm, alignItems: 'center' },
+  issueLine: { width: 88, height: 1, opacity: 0.9 },
+  kicker: { ...uiTokens.typography.meta, letterSpacing: 1.2, textAlign: 'center' },
+  bigTitle: uiTokens.typography.screenTitle,
+  subtitle: { fontSize: 13, lineHeight: 18, fontWeight: '800', textAlign: 'center' },
+  briefCard: { padding: 18, gap: uiTokens.spacing.md },
+  briefTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: uiTokens.spacing.md },
+  briefMeta: { fontSize: 10, lineHeight: 13, fontWeight: '900', letterSpacing: 1 },
+  briefTitle: { fontSize: 22, lineHeight: 28, fontWeight: '900' },
+  briefBadge: { borderWidth: 1.5, borderRadius: uiTokens.radius.md, paddingHorizontal: uiTokens.spacing.md, paddingVertical: uiTokens.spacing.sm },
+  briefBadgeText: { fontSize: 12, lineHeight: 15, fontWeight: '900' },
+  statGrid: { flexDirection: 'row', gap: uiTokens.spacing.sm },
+  statBox: { flex: 1, borderWidth: 1, borderRadius: uiTokens.radius.md, padding: uiTokens.spacing.md, gap: 2 },
+  statValue: { fontSize: 24, lineHeight: 28, fontWeight: '900' },
+  statLabel: { fontSize: 12, lineHeight: 16, fontWeight: '800' },
+  quickPanel: { gap: uiTokens.spacing.md },
+  quickActions: { flexDirection: 'row', gap: uiTokens.spacing.sm },
+  quickAction: { flex: 1 },
+  sectionCard: { gap: uiTokens.spacing.md },
+  sectionTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: uiTokens.spacing.md },
+  sectionTitle: uiTokens.typography.sectionTitle,
+  sectionSub: { fontSize: 13, lineHeight: 18, fontWeight: '800' },
+  countText: { fontSize: 13, lineHeight: 18, fontWeight: '900' },
+  progressTrack: { height: 10, borderRadius: uiTokens.radius.pill, overflow: 'hidden' },
+  progressFill: { height: 10, borderRadius: uiTokens.radius.pill },
+  cardFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: uiTokens.spacing.md },
+  todoList: { gap: uiTokens.spacing.sm },
+  todoRow: { borderWidth: 1, borderRadius: uiTokens.radius.md, padding: uiTokens.spacing.md, flexDirection: 'row', gap: uiTokens.spacing.md, alignItems: 'center' },
+  todoIndex: { width: 24, fontSize: 12, lineHeight: 16, fontWeight: '900', letterSpacing: 0.8 },
   todoText: { flex: 1, gap: 2 },
   todoTitle: { fontSize: 15, lineHeight: 20, fontWeight: '900' },
-
-  cardActionsRow: { flexDirection: 'row', justifyContent: 'flex-end' },
-  smallChip: { borderWidth: 1.5, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8 },
-  smallChipText: { fontSize: 13, lineHeight: 16, fontWeight: '900' },
+  emptyBox: { borderWidth: 1, borderRadius: uiTokens.radius.md, padding: uiTokens.spacing.md, alignItems: 'center', gap: uiTokens.spacing.sm },
+  emptyMark: { fontSize: 20, lineHeight: 24, fontWeight: '900' },
+  emptyText: { fontSize: 13, lineHeight: 19, fontWeight: '800', textAlign: 'center' },
 });

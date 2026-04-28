@@ -1,5 +1,7 @@
 import type { AIState } from '@/stores/aiStore';
 import { useAIStore } from '@/stores/aiStore';
+import type { DailyTimelineRecord } from '@/stores/dailyTimelineStore';
+import { useDailyTimelineStore } from '@/stores/dailyTimelineStore';
 import type { GameState } from '@/stores/gameStore';
 import { useGameStore } from '@/stores/gameStore';
 import type { Habit, HabitLog } from '@/stores/habitStore';
@@ -18,6 +20,10 @@ export type BackupSnapshot = {
   data: {
     todos: {
       items: Todo[];
+      deletedItems: Todo[];
+    };
+    dailyTimeline: {
+      records: DailyTimelineRecord[];
     };
     habits: {
       habits: Record<string, Habit>;
@@ -49,6 +55,10 @@ export type BackupSnapshot = {
 export type BackupSummary = {
   todosTotal: number;
   todosDone: number;
+  todosDeletedTotal: number;
+  dailyTimelineRecordsTotal: number;
+  dailyTimelineActiveRecordsTotal: number;
+  dailyTimelineDeletedRecordsTotal: number;
   habitsTotal: number;
   habitsArchived: number;
   gameAttrs: Record<string, number>;
@@ -61,6 +71,7 @@ export type BackupSummary = {
 
 export function buildBackupSnapshot(): BackupSnapshot {
   const todoState = useTodoStore.getState();
+  const dailyTimelineState = useDailyTimelineStore.getState();
   const habitState = useHabitStore.getState();
   const gameState = useGameStore.getState();
   const fragmentState = useFragmentStore.getState();
@@ -74,6 +85,10 @@ export function buildBackupSnapshot(): BackupSnapshot {
     data: {
       todos: {
         items: todoState.items,
+        deletedItems: todoState.deletedItems,
+      },
+      dailyTimeline: {
+        records: dailyTimelineState.records,
       },
       habits: {
         habits: habitState.habits,
@@ -105,6 +120,8 @@ export function buildBackupSnapshot(): BackupSnapshot {
 
 export function buildBackupSummary(snapshot: BackupSnapshot = buildBackupSnapshot()): BackupSummary {
   const todos = snapshot.data.todos.items;
+  const deletedTodos = snapshot.data.todos.deletedItems;
+  const dailyTimelineRecords = snapshot.data.dailyTimeline.records;
   const habits = Object.values(snapshot.data.habits.habits);
   const fragments = snapshot.data.fragments.fragments;
   const attrs = snapshot.data.game.player.attrs;
@@ -112,6 +129,10 @@ export function buildBackupSummary(snapshot: BackupSnapshot = buildBackupSnapsho
   return {
     todosTotal: todos.length,
     todosDone: todos.filter((todo) => todo.done).length,
+    todosDeletedTotal: deletedTodos.length,
+    dailyTimelineRecordsTotal: dailyTimelineRecords.length,
+    dailyTimelineActiveRecordsTotal: dailyTimelineRecords.filter((record) => !record.deletedAt).length,
+    dailyTimelineDeletedRecordsTotal: dailyTimelineRecords.filter((record) => record.deletedAt).length,
     habitsTotal: habits.length,
     habitsArchived: habits.filter((habit) => habit.archived === true).length,
     gameAttrs: {

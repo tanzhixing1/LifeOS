@@ -5,6 +5,7 @@ import type { ToolCategory } from '@/core/constants/todo-category';
 import { getLocalISODate } from '@/core/utils/date';
 import { applyRealityReward } from '@/services/rewards/realityReward';
 import { zustandStorage } from '@/services/storage/zustandStorage';
+import { useDailyTimelineStore } from '@/stores/dailyTimelineStore';
 
 export type Habit = {
   id: string;
@@ -152,8 +153,32 @@ export const useHabitStore = create<HabitStore>()(
         const habit = get().habits[habitId];
         const existing = get().logs.find((x) => x.date === today && x.habitId === habitId);
         const nextDone = existing?.status !== 'done';
-        if (existing?.status === 'done') get().clearLog(today, habitId);
-        else get().setLog({ date: today, habitId, status: 'done' });
+        if (existing?.status === 'done') {
+          get().clearLog(today, habitId);
+          useDailyTimelineStore.getState().softDeleteByDedupeKey(`habit:${habitId}:done:${today}`);
+        } else {
+          const now = Date.now();
+          get().setLog({ date: today, habitId, status: 'done' });
+          if (habit) {
+            useDailyTimelineStore.getState().upsertRecord({
+              dateISO: today,
+              occurredAt: now,
+              source: 'habit',
+              sourceId: habit.id,
+              title: habit.title,
+              category: habit.category,
+              iconId: habit.iconId,
+              kind: 'completed',
+              dedupeKey: `habit:${habit.id}:done:${today}`,
+              sourceSnapshot: {
+                title: habit.title,
+                category: habit.category,
+                iconId: habit.iconId,
+                schedule: habit.schedule,
+              },
+            });
+          }
+        }
 
         if (habit) {
           applyRealityReward({
