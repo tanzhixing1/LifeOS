@@ -11,10 +11,24 @@ export type SaveSlot = {
   eventId: string;
 };
 
+export type RewardLogDirection = 'gain' | 'revert';
+
+export type RewardLog = {
+  id: string;
+  source: 'todo' | 'habit' | 'game';
+  sourceId: string;
+  title: string;
+  category: string;
+  deltas: Record<string, number>;
+  direction: RewardLogDirection;
+  createdAt: number;
+};
+
 export type GameState = {
   player: PlayerState;
   eventId: string;
   saveSlots: Record<string, SaveSlot | null>;
+  rewardLogs: RewardLog[];
 };
 
 export type GameActions = {
@@ -22,6 +36,7 @@ export type GameActions = {
   setFlag(key: string, value: boolean): void;
   addAttr(key: string, value: number): void;
   addAttrClamped(key: string, value: number): void;
+  addRewardLog(log: RewardLog): void;
   setLocation(locationId: string | undefined): void;
   gotoEvent(eventId: string): void;
   save(slotId: string): void;
@@ -44,6 +59,7 @@ function defaultState(): GameState {
       slot2: null,
       slot3: null,
     },
+    rewardLogs: [],
   };
 }
 
@@ -70,6 +86,9 @@ export const useGameStore = create<GameStore>()(
           return { player: { ...s.player, attrs: { ...s.player.attrs, [key]: next } } };
         });
       },
+      addRewardLog(log) {
+        set((s) => ({ rewardLogs: [log, ...s.rewardLogs].slice(0, 50) }));
+      },
       setLocation(locationId) {
         set((s) => ({ player: { ...s.player, location: locationId } }));
       },
@@ -92,25 +111,29 @@ export const useGameStore = create<GameStore>()(
         set({ player: slot.player, eventId: slot.eventId });
       },
       resetGame() {
-        set(defaultState());
+        set((s) => ({ ...defaultState(), rewardLogs: s.rewardLogs }));
       },
     }),
     {
       name: 'lifeos.gameStore',
-      version: 2,
+      version: 3,
       storage: zustandStorage,
-      partialize: (s) => ({ player: s.player, eventId: s.eventId, saveSlots: s.saveSlots }),
+      partialize: (s) => ({ player: s.player, eventId: s.eventId, saveSlots: s.saveSlots, rewardLogs: s.rewardLogs }),
       migrate: (persistedState: any) => {
-        if (persistedState?.player?.attrs) {
-          const attrs = persistedState.player.attrs;
-          persistedState.player.attrs = {
+        const state = persistedState && typeof persistedState === 'object' ? persistedState : {};
+        if (state?.player?.attrs) {
+          const attrs = state.player.attrs;
+          state.player.attrs = {
             mana: typeof attrs.mana === 'number' ? attrs.mana : 100,
             hp: typeof attrs.hp === 'number' ? attrs.hp : 100,
             sanity: typeof attrs.sanity === 'number' ? attrs.sanity : 100,
             ...attrs,
           };
         }
-        return persistedState;
+        return {
+          ...state,
+          rewardLogs: Array.isArray(state.rewardLogs) ? state.rewardLogs : [],
+        };
       },
     }
   )

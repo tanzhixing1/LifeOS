@@ -2,7 +2,7 @@ import type { AIState } from '@/stores/aiStore';
 import { useAIStore } from '@/stores/aiStore';
 import type { DailyTimelineRecord } from '@/stores/dailyTimelineStore';
 import { useDailyTimelineStore } from '@/stores/dailyTimelineStore';
-import type { GameState } from '@/stores/gameStore';
+import type { GameState, RewardLog } from '@/stores/gameStore';
 import { useGameStore } from '@/stores/gameStore';
 import type { Habit, HabitLog } from '@/stores/habitStore';
 import { useHabitStore } from '@/stores/habitStore';
@@ -47,7 +47,7 @@ export type BackupSnapshot = {
       activeCharacterId: AIState['activeCharacterId'];
     };
     rewards: {
-      logs: [];
+      logs: RewardLog[];
     };
   };
 };
@@ -112,7 +112,7 @@ export function buildBackupSnapshot(): BackupSnapshot {
         activeCharacterId: aiState.activeCharacterId,
       },
       rewards: {
-        logs: [],
+        logs: gameState.rewardLogs,
       },
     },
   };

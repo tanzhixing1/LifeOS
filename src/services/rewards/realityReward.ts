@@ -58,9 +58,28 @@ export function applyRealityReward(input: RealityRewardInput): void {
   const attrKey = CATEGORY_ATTRS[category];
   const delta = input.completed ? 1 : -1;
   const game = useGameStore.getState();
+  const beforeAttrs = { ...game.player.attrs };
 
   game.addAttrClamped('mana', delta);
   game.addAttrClamped(attrKey, delta);
+
+  const afterAttrs = useGameStore.getState().player.attrs;
+  const deltas: Record<string, number> = {};
+  for (const key of new Set(['mana', attrKey])) {
+    const actualDelta = (afterAttrs[key] ?? 0) - (beforeAttrs[key] ?? 0);
+    if (actualDelta !== 0) deltas[key] = actualDelta;
+  }
+
+  useGameStore.getState().addRewardLog({
+    id: `reward_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    source: input.source,
+    sourceId: input.id,
+    title: input.title,
+    category,
+    deltas,
+    direction: input.completed ? 'gain' : 'revert',
+    createdAt: Date.now(),
+  });
 
   if (!input.completed) return;
 
