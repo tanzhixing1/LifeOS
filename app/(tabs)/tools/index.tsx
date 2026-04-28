@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { AppButton } from '@/core/ui/AppButton';
@@ -22,6 +22,13 @@ const SOURCE_LABELS: Record<DailyTimelineRecord['source'], string> = {
   schedule: '行程',
   manual: '手动',
 };
+const SOURCE_DETAIL_LABELS: Record<DailyTimelineRecord['source'], string> = {
+  todo: '待办记录',
+  habit: '习惯记录',
+  schedule: '行程记录',
+  manual: '手动记录',
+};
+const DEFAULT_MANUAL_CATEGORY = '日常';
 
 type CalendarDay = {
   date: Date;
@@ -47,6 +54,32 @@ function getDaysInMonth(year: number, monthIndex: number): number {
 
 function clampDateToMonth(year: number, monthIndex: number, day: number): Date {
   return new Date(year, monthIndex, Math.min(day, getDaysInMonth(year, monthIndex)));
+}
+
+function getDefaultTimeInputValue(): string {
+  const now = new Date();
+  return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+}
+
+function formatTimeInputValue(timestamp: number): string {
+  const date = new Date(timestamp);
+  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+}
+
+function parseTimeInput(timeInput: string): { hours: number; minutes: number } | null {
+  const match = timeInput.trim().match(/^(\d{1,2}):(\d{1,2})$/);
+  if (!match) return null;
+
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (!Number.isInteger(hours) || !Number.isInteger(minutes)) return null;
+  if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
+  return { hours, minutes };
+}
+
+function getManualOccurredAt(date: Date, timeInput: string): number {
+  const parsed = parseTimeInput(timeInput) ?? { hours: 9, minutes: 0 };
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate(), parsed.hours, parsed.minutes).getTime();
 }
 
 function getTimelineTime(record: DailyTimelineRecord): number {
@@ -92,6 +125,13 @@ export default function ToolsHomeScreen() {
   const [visibleMonth, setVisibleMonth] = useState(() => getMonthStart(getDateOnly(new Date())));
   const [selectedDate, setSelectedDate] = useState(() => getDateOnly(new Date()));
   const [isTimelineExpanded, setIsTimelineExpanded] = useState(true);
+  const [manualModalVisible, setManualModalVisible] = useState(false);
+  const [manualTitle, setManualTitle] = useState('');
+  const [manualTime, setManualTime] = useState(() => getDefaultTimeInputValue());
+  const [manualCategory, setManualCategory] = useState(DEFAULT_MANUAL_CATEGORY);
+  const [manualNote, setManualNote] = useState('');
+  const [manualFormError, setManualFormError] = useState('');
+  const [editingRecord, setEditingRecord] = useState<DailyTimelineRecord | null>(null);
 
   const habitsMap = useHabitStore((s) => s.habits);
   const logs = useHabitStore((s) => s.logs);
@@ -101,6 +141,9 @@ export default function ToolsHomeScreen() {
   const toggleTodo = useTodoStore((s) => s.toggle);
   const trigger = useMessengerStore((s) => s.trigger);
   const dailyTimelineRecords = useDailyTimelineStore((s) => s.records);
+  const addDailyTimelineRecord = useDailyTimelineStore((s) => s.addRecord);
+  const updateDailyTimelineRecord = useDailyTimelineStore((s) => s.updateRecord);
+  const softDeleteDailyTimelineRecord = useDailyTimelineStore((s) => s.softDeleteRecord);
 
   const todayISO = useMemo(() => getLocalISODate(new Date()), []);
   const selectedDateISO = useMemo(() => getLocalISODate(selectedDate), [selectedDate]);
@@ -184,6 +227,104 @@ export default function ToolsHomeScreen() {
     if (!day.isCurrentMonth) {
       setVisibleMonth(getMonthStart(day.date));
     }
+  };
+
+  const openManualRecordModal = () => {
+    setIsTimelineExpanded(true);
+    setEditingRecord(null);
+    setManualTitle('');
+    setManualTime(getDefaultTimeInputValue());
+    setManualCategory(DEFAULT_MANUAL_CATEGORY);
+    setManualNote('');
+    setManualFormError('');
+    setManualModalVisible(true);
+  };
+
+  const openRecordEditor = (record: DailyTimelineRecord) => {
+    setIsTimelineExpanded(true);
+    setEditingRecord(record);
+    setManualTitle(record.title);
+    setManualTime(formatTimeInputValue(getTimelineTime(record)));
+    setManualCategory(record.category ?? DEFAULT_MANUAL_CATEGORY);
+    setManualNote(record.note ?? '');
+    setManualFormError('');
+    setManualModalVisible(true);
+  };
+
+  const closeManualRecordModal = () => {
+    setManualModalVisible(false);
+    setManualFormError('');
+    setEditingRecord(null);
+  };
+
+  const saveManualRecord = () => {
+    const title = manualTitle.trim();
+    if (!title) {
+      setManualFormError('先写一个标题');
+      return;
+    }
+
+    const now = Date.now();
+    const category = manualCategory.trim() || DEFAULT_MANUAL_CATEGORY;
+    const note = manualNote.trim();
+    const occurredAt = getManualOccurredAt(selectedDate, manualTime);
+
+    if (editingRecord) {
+      updateDailyTimelineRecord(editingRecord.id, {
+        dateISO: selectedDateISO,
+        occurredAt,
+        deletedAt: null,
+        title,
+        category,
+        note: note || undefined,
+      });
+      setManualModalVisible(false);
+      setEditingRecord(null);
+      setManualFormError('');
+      setIsTimelineExpanded(true);
+      return;
+    }
+
+    addDailyTimelineRecord({
+      dateISO: selectedDateISO,
+      occurredAt,
+      createdAt: now,
+      deletedAt: null,
+      source: 'manual',
+      title,
+      category,
+      note: note || undefined,
+      kind: 'manual',
+    });
+
+    setManualTitle('');
+    setManualTime(getDefaultTimeInputValue());
+    setManualCategory(DEFAULT_MANUAL_CATEGORY);
+    setManualNote('');
+    setManualFormError('');
+    setManualModalVisible(false);
+    setEditingRecord(null);
+    setIsTimelineExpanded(true);
+  };
+
+  const confirmDeleteEditingRecord = () => {
+    if (!editingRecord) return;
+
+    const isManual = editingRecord.source === 'manual';
+    Alert.alert(isManual ? '删除记录？' : '隐藏记录？', isManual ? '确定删除这条手动记录吗？' : '确定从时间线隐藏这条记录吗？原待办或习惯不会被删除。', [
+      { text: '取消', style: 'cancel' },
+      {
+        text: isManual ? '删除' : '隐藏',
+        style: 'destructive',
+        onPress: () => {
+          softDeleteDailyTimelineRecord(editingRecord.id);
+          setManualModalVisible(false);
+          setEditingRecord(null);
+          setManualFormError('');
+          setIsTimelineExpanded(true);
+        },
+      },
+    ]);
   };
 
   useEffect(() => {
@@ -314,7 +455,10 @@ export default function ToolsHomeScreen() {
               <ThemedText style={[styles.briefMeta, { color: palette.muted }]}>SELECTED DAY</ThemedText>
               <ThemedText style={styles.sectionTitle}>生活时间线</ThemedText>
             </View>
-            <ThemedText style={[styles.countText, { color: palette.muted }]}>{selectedRecordCount} 条</ThemedText>
+            <View style={styles.timelineHeaderActions}>
+              <ThemedText style={[styles.countText, { color: palette.muted }]}>{selectedRecordCount} 条</ThemedText>
+              <AppChip title="+ 添加" onPress={openManualRecordModal} />
+            </View>
           </View>
 
           {selectedTimelineRecords.length === 0 ? (
@@ -323,6 +467,7 @@ export default function ToolsHomeScreen() {
               <View style={styles.timelineEmptyText}>
                 <ThemedText style={styles.timelineEmptyTitle}>这天还没有记录</ThemedText>
                 <ThemedText style={[styles.sectionSub, { color: palette.muted }]}>完成待办或习惯打卡后，会自动留在这里。</ThemedText>
+                <AppButton title="添加一条记录" variant="outline" onPress={openManualRecordModal} style={styles.timelineEmptyAction} />
               </View>
             </View>
           ) : (
@@ -331,7 +476,12 @@ export default function ToolsHomeScreen() {
               {selectedTimelineRecords.map((record) => (
                 <View key={record.id} style={styles.timelineItem}>
                   <View style={[styles.timelineNode, { backgroundColor: palette.card, borderColor: palette.accentStrong }]} />
-                  <View style={[styles.timelineRecordCard, { backgroundColor: palette.input, borderColor: palette.border }]}>
+                  <Pressable
+                    onPress={() => openRecordEditor(record)}
+                    style={({ pressed }) => [
+                      styles.timelineRecordCard,
+                      { backgroundColor: palette.input, borderColor: palette.border, opacity: pressed ? 0.82 : 1 },
+                    ]}>
                     <View style={styles.timelineRecordTop}>
                       <ThemedText style={[styles.timelineTime, { color: palette.accentStrong }]}>{formatTimelineTime(record)}</ThemedText>
                       <View style={styles.timelineTags}>
@@ -346,13 +496,24 @@ export default function ToolsHomeScreen() {
                       </View>
                     </View>
                     <ThemedText style={styles.timelineTitle}>{record.title}</ThemedText>
-                  </View>
+                    {record.note ? <ThemedText style={[styles.timelineNote, { color: palette.muted }]}>{record.note}</ThemedText> : null}
+                  </Pressable>
                 </View>
               ))}
             </View>
           )}
         </SectionCard>
-      ) : null}
+      ) : (
+        <SectionCard style={styles.timelineCollapsedCard}>
+          <View style={styles.timelineCollapsedRow}>
+            <View>
+              <ThemedText style={[styles.briefMeta, { color: palette.muted }]}>SELECTED DAY</ThemedText>
+              <ThemedText style={[styles.sectionSub, { color: palette.muted }]}>时间线已收起</ThemedText>
+            </View>
+            <AppChip title="+ 添加" onPress={openManualRecordModal} />
+          </View>
+        </SectionCard>
+      )}
 
       <SectionCard style={styles.quickPanel}>
         <View style={styles.sectionTop}>
@@ -447,6 +608,100 @@ export default function ToolsHomeScreen() {
           我会在你拖延、到期、完成时冒出来说两句。现在先看得到弹窗，不接 AI。
         </ThemedText>
       </SectionCard>
+
+      <Modal visible={manualModalVisible} transparent animationType="slide" onRequestClose={closeManualRecordModal}>
+        <Pressable style={[styles.sheetMask, { backgroundColor: palette.overlay }]} onPress={closeManualRecordModal}>
+          <Pressable style={styles.sheetMaskInner} />
+        </Pressable>
+        <KeyboardAvoidingView behavior={Platform.select({ ios: 'padding', android: undefined })} style={styles.sheetKav}>
+          <View style={[styles.manualSheet, { backgroundColor: palette.card, borderColor: palette.border }]}>
+            <View style={styles.sheetTop}>
+              <View style={[styles.sheetHandle, { backgroundColor: palette.border }]} />
+            </View>
+
+            <View style={styles.sheetTitleWrap}>
+              <ThemedText style={[styles.briefMeta, { color: reportAccent }]}>{editingRecord ? 'TIMELINE RECORD' : 'MANUAL RECORD'}</ThemedText>
+              <ThemedText style={styles.sheetTitle}>{editingRecord ? '编辑记录' : '添加生活记录'}</ThemedText>
+              <ThemedText style={[styles.sectionSub, { color: palette.muted }]}>{selectedDateLabel}</ThemedText>
+              {editingRecord ? (
+                <View style={[styles.sourcePill, { backgroundColor: palette.accentSoft, borderColor: palette.border }]}>
+                  <ThemedText style={[styles.sourcePillText, { color: palette.accentStrong }]}>{SOURCE_DETAIL_LABELS[editingRecord.source]}</ThemedText>
+                </View>
+              ) : null}
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.manualForm}>
+              <View style={styles.formGroup}>
+                <ThemedText style={[styles.formLabel, { color: palette.muted }]}>标题</ThemedText>
+                <TextInput
+                  value={manualTitle}
+                  onChangeText={(value) => {
+                    setManualTitle(value);
+                    if (manualFormError) setManualFormError('');
+                  }}
+                  placeholder="例如：整理书桌"
+                  placeholderTextColor={palette.muted}
+                  style={[styles.formInput, { borderColor: palette.border, color: palette.text, backgroundColor: palette.input }]}
+                  returnKeyType="done"
+                />
+              </View>
+
+              <View style={styles.formRow}>
+                <View style={[styles.formGroup, styles.formRowItem]}>
+                  <ThemedText style={[styles.formLabel, { color: palette.muted }]}>时间</ThemedText>
+                  <TextInput
+                    value={manualTime}
+                    onChangeText={setManualTime}
+                    placeholder="09:00"
+                    placeholderTextColor={palette.muted}
+                    style={[styles.formInput, { borderColor: palette.border, color: palette.text, backgroundColor: palette.input }]}
+                    keyboardType="numbers-and-punctuation"
+                  />
+                </View>
+                <View style={[styles.formGroup, styles.formRowItem]}>
+                  <ThemedText style={[styles.formLabel, { color: palette.muted }]}>分类</ThemedText>
+                  <TextInput
+                    value={manualCategory}
+                    onChangeText={setManualCategory}
+                    placeholder={DEFAULT_MANUAL_CATEGORY}
+                    placeholderTextColor={palette.muted}
+                    style={[styles.formInput, { borderColor: palette.border, color: palette.text, backgroundColor: palette.input }]}
+                    returnKeyType="done"
+                  />
+                </View>
+              </View>
+
+              <View style={styles.formGroup}>
+                <ThemedText style={[styles.formLabel, { color: palette.muted }]}>备注</ThemedText>
+                <TextInput
+                  value={manualNote}
+                  onChangeText={setManualNote}
+                  placeholder="可选"
+                  placeholderTextColor={palette.muted}
+                  style={[styles.formInput, styles.noteInput, { borderColor: palette.border, color: palette.text, backgroundColor: palette.input }]}
+                  multiline
+                  textAlignVertical="top"
+                />
+              </View>
+
+              {manualFormError ? <ThemedText style={[styles.formError, { color: palette.danger }]}>{manualFormError}</ThemedText> : null}
+            </ScrollView>
+
+            <View style={styles.sheetActions}>
+              {editingRecord ? (
+                <AppButton
+                  title={editingRecord.source === 'manual' ? '删除' : '隐藏'}
+                  variant="danger"
+                  onPress={confirmDeleteEditingRecord}
+                  style={styles.sheetAction}
+                />
+              ) : null}
+              <AppButton title="取消" variant="outline" onPress={closeManualRecordModal} style={styles.sheetAction} />
+              <AppButton title="保存" onPress={saveManualRecord} style={styles.sheetAction} />
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </ScreenScaffold>
   );
 }
@@ -491,6 +746,7 @@ const styles = StyleSheet.create({
   calendarHintDate: { fontSize: 13, lineHeight: 18, fontWeight: '900' },
   calendarHintText: { flex: 1, fontSize: 13, lineHeight: 18, fontWeight: '800', textAlign: 'right' },
   timelineCard: { gap: uiTokens.spacing.md },
+  timelineHeaderActions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: uiTokens.spacing.sm },
   timelineEmpty: {
     borderWidth: 1,
     borderRadius: uiTokens.radius.md,
@@ -501,6 +757,7 @@ const styles = StyleSheet.create({
   },
   timelineEmptyText: { flex: 1, gap: 2 },
   timelineEmptyTitle: { fontSize: 15, lineHeight: 20, fontWeight: '900' },
+  timelineEmptyAction: { alignSelf: 'flex-start', minHeight: 38, marginTop: uiTokens.spacing.sm, borderRadius: uiTokens.radius.md },
   timelineList: { gap: uiTokens.spacing.sm, position: 'relative', paddingLeft: 16 },
   timelineRail: { position: 'absolute', left: 21, top: 14, bottom: 14, width: 2, borderRadius: uiTokens.radius.pill },
   timelineItem: { flexDirection: 'row', gap: uiTokens.spacing.md, alignItems: 'flex-start' },
@@ -512,6 +769,44 @@ const styles = StyleSheet.create({
   timelineTag: { borderWidth: 1, borderRadius: uiTokens.radius.pill, paddingHorizontal: uiTokens.spacing.sm, paddingVertical: 3 },
   timelineTagText: { fontSize: 11, lineHeight: 14, fontWeight: '900' },
   timelineTitle: { fontSize: 15, lineHeight: 20, fontWeight: '900' },
+  timelineNote: { fontSize: 13, lineHeight: 18, fontWeight: '800' },
+  timelineCollapsedCard: { paddingVertical: uiTokens.spacing.md },
+  timelineCollapsedRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: uiTokens.spacing.md },
+  sheetMask: { flex: 1 },
+  sheetMaskInner: { flex: 1 },
+  sheetKav: { position: 'absolute', left: 0, right: 0, bottom: 0 },
+  manualSheet: {
+    borderWidth: 1,
+    borderTopLeftRadius: uiTokens.radius.xl,
+    borderTopRightRadius: uiTokens.radius.xl,
+    padding: uiTokens.spacing.lg,
+    paddingBottom: uiTokens.spacing.xl,
+    maxHeight: '88%',
+  },
+  sheetTop: { alignItems: 'center', justifyContent: 'center', height: 22 },
+  sheetHandle: { width: 44, height: 5, borderRadius: uiTokens.radius.pill },
+  sheetTitleWrap: { alignItems: 'center', gap: 2, marginBottom: uiTokens.spacing.md },
+  sheetTitle: uiTokens.typography.cardTitle,
+  sourcePill: { borderWidth: 1, borderRadius: uiTokens.radius.pill, paddingHorizontal: uiTokens.spacing.sm, paddingVertical: 3, marginTop: uiTokens.spacing.xs },
+  sourcePillText: { fontSize: 11, lineHeight: 14, fontWeight: '900' },
+  manualForm: { gap: uiTokens.spacing.md, paddingBottom: uiTokens.spacing.sm },
+  formGroup: { gap: uiTokens.spacing.sm },
+  formRow: { flexDirection: 'row', gap: uiTokens.spacing.sm },
+  formRowItem: { flex: 1 },
+  formLabel: uiTokens.typography.chip,
+  formInput: {
+    minHeight: 44,
+    borderWidth: 1.5,
+    borderRadius: uiTokens.radius.md,
+    paddingHorizontal: uiTokens.spacing.md,
+    paddingVertical: uiTokens.spacing.sm,
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  noteInput: { minHeight: 82 },
+  formError: { fontSize: 12, lineHeight: 17, fontWeight: '900' },
+  sheetActions: { flexDirection: 'row', gap: uiTokens.spacing.sm, marginTop: uiTokens.spacing.sm, paddingTop: uiTokens.spacing.sm },
+  sheetAction: { flex: 1 },
   quickPanel: { gap: uiTokens.spacing.md },
   quickActions: { flexDirection: 'row', gap: uiTokens.spacing.sm },
   quickAction: { flex: 1 },

@@ -42,6 +42,7 @@ export type DailyTimelineState = {
 
 export type DailyTimelineActions = {
   addRecord(input: DailyTimelineRecordInput): string;
+  updateRecord(id: string, patch: Partial<Omit<DailyTimelineRecord, 'id' | 'createdAt'>>): void;
   upsertRecord(input: DailyTimelineRecordInput): string;
   softDeleteRecord(id: string): void;
   softDeleteByDedupeKey(dedupeKey: string): void;
@@ -82,6 +83,14 @@ export const useDailyTimelineStore = create<DailyTimelineStore>()(
         const record = normalizeRecord(input);
         set((state) => ({ records: [record, ...state.records] }));
         return record.id;
+      },
+      updateRecord(id, patch) {
+        const now = Date.now();
+        set((state) => ({
+          records: state.records.map((record) =>
+            record.id === id ? { ...record, ...patch, id: record.id, createdAt: record.createdAt, updatedAt: now } : record
+          ),
+        }));
       },
       upsertRecord(input) {
         const now = Date.now();
