@@ -1,59 +1,112 @@
 import { router } from 'expo-router';
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { useThemeColor } from '@/hooks/use-theme-color';
+import { AppChip } from '@/core/ui/AppChip';
+import { ScreenScaffold } from '@/core/ui/ScreenScaffold';
+import { SectionCard } from '@/core/ui/SectionCard';
+import { uiTokens } from '@/core/theme/tokens';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useFragmentStore } from '@/stores';
+
+function formatLatest(timestamp: number | null) {
+  if (!timestamp) return '还没有记录';
+  const d = new Date(timestamp);
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  const hour = String(d.getHours()).padStart(2, '0');
+  const minute = String(d.getMinutes()).padStart(2, '0');
+  return `${month}-${day} ${hour}:${minute}`;
+}
 
 export default function LabHomeScreen() {
-  const pageBg = useThemeColor({ light: '#F2EEE8', dark: '#171819' }, 'background');
-  const mutedText = useThemeColor({ light: '#7A756F', dark: '#A7B0BE' }, 'text');
-  const cardBg = useThemeColor({ light: '#F7F3EE', dark: '#1C1F22' }, 'background');
-  const cardBorder = useThemeColor({ light: '#D8D0C7', dark: '#2A3036' }, 'text');
-  const accent = useThemeColor({ light: '#6366F1', dark: '#6366F1' }, 'tint');
+  const theme = useColorScheme() ?? 'light';
+  const palette = uiTokens.colors[theme];
+  const fragments = useFragmentStore((s) => s.fragments);
+
+  const stats = useMemo(() => {
+    const inspirations = fragments.filter((x) => x.type === 'inspiration');
+    const moods = fragments.filter((x) => x.type === 'mood');
+    return {
+      inspirations: inspirations.length,
+      moods: moods.length,
+      latestInspiration: inspirations[0]?.updatedAt ?? inspirations[0]?.createdAt ?? null,
+      latestMood: moods[0]?.updatedAt ?? moods[0]?.createdAt ?? null,
+    };
+  }, [fragments]);
 
   return (
-    <ThemedView style={[styles.screen, { backgroundColor: pageBg }]}>
+    <ScreenScaffold scroll contentContainerStyle={styles.content}>
       <View style={styles.header}>
-        <ThemedText style={styles.bigTitle}>扩展（实验室）</ThemedText>
-        <ThemedText style={[styles.subtitle, { color: mutedText }]}>
-          你想写就写。不想写也行。但别骗我说你写了。
+        <View style={[styles.orbit, { borderColor: palette.accentSoft }]}>
+          <ThemedText style={[styles.orbitMoon, { color: palette.accentStrong }]}>☾</ThemedText>
+          <ThemedText style={[styles.orbitStar, { color: palette.accentStrong }]}>✦</ThemedText>
+        </View>
+        <ThemedText style={[styles.kicker, { color: palette.accentStrong }]}>LAB NOTEBOOK</ThemedText>
+        <ThemedText style={styles.bigTitle}>拓展实验室</ThemedText>
+        <ThemedText style={[styles.subtitle, { color: palette.muted }]}>
+          一间安静的小房间，用来收集情绪天气、灵感火花和一些还没成形的想法。
         </ThemedText>
       </View>
 
       <View style={styles.grid}>
-        <Pressable
-          onPress={() => router.push('/(tabs)/lab/mood')}
-          style={({ pressed }) => [
-            styles.entryCard,
-            { backgroundColor: cardBg, borderColor: accent, opacity: pressed ? 0.92 : 1 },
-          ]}>
-          <ThemedText style={styles.entryTitle}>心情碎片</ThemedText>
-          <ThemedText style={[styles.entrySub, { color: mutedText }]}>记一条。别憋着。</ThemedText>
+        <Pressable onPress={() => router.push('/(tabs)/lab/mood')} style={({ pressed }) => [{ opacity: pressed ? 0.92 : 1 }]}>
+          <SectionCard elevated style={[styles.entryCard, { borderColor: palette.accent }]}>
+            <View style={styles.paperGlow} />
+            <View style={styles.entryTop}>
+              <View>
+                <ThemedText style={[styles.entryIcon, { color: palette.accentStrong }]}>☾</ThemedText>
+                <ThemedText style={[styles.entryKicker, { color: palette.muted }]}>MOOD OBSERVATORY</ThemedText>
+              </View>
+              <AppChip title={`${stats.moods} 条`} selected style={styles.entryChip} />
+            </View>
+            <View style={[styles.divider, { backgroundColor: palette.border }]} />
+            <ThemedText style={styles.entryTitle}>心情碎片</ThemedText>
+            <ThemedText style={[styles.entrySub, { color: palette.muted }]}>记录此刻的情绪、强度和一句备注。</ThemedText>
+            <ThemedText style={[styles.entryMeta, { color: palette.muted }]}>最近：{formatLatest(stats.latestMood)}</ThemedText>
+          </SectionCard>
         </Pressable>
 
-        <Pressable
-          onPress={() => router.push('/(tabs)/lab/inspiration')}
-          style={({ pressed }) => [
-            styles.entryCard,
-            { backgroundColor: cardBg, borderColor: accent, opacity: pressed ? 0.92 : 1 },
-          ]}>
-          <ThemedText style={styles.entryTitle}>灵感碎片</ThemedText>
-          <ThemedText style={[styles.entrySub, { color: mutedText }]}>闪一下就记。别等它跑。</ThemedText>
+        <Pressable onPress={() => router.push('/(tabs)/lab/inspiration')} style={({ pressed }) => [{ opacity: pressed ? 0.92 : 1 }]}>
+          <SectionCard elevated style={[styles.entryCard, { borderColor: palette.accent }]}>
+            <View style={styles.paperGlow} />
+            <View style={styles.entryTop}>
+              <View>
+                <ThemedText style={[styles.entryIcon, { color: palette.accentStrong }]}>✦</ThemedText>
+                <ThemedText style={[styles.entryKicker, { color: palette.muted }]}>SPARK ARCHIVE</ThemedText>
+              </View>
+              <AppChip title={`${stats.inspirations} 条`} selected style={styles.entryChip} />
+            </View>
+            <View style={[styles.divider, { backgroundColor: palette.border }]} />
+            <ThemedText style={styles.entryTitle}>灵感碎片</ThemedText>
+            <ThemedText style={[styles.entrySub, { color: palette.muted }]}>先把火花写下来，不急着解释它。</ThemedText>
+            <ThemedText style={[styles.entryMeta, { color: palette.muted }]}>最近：{formatLatest(stats.latestInspiration)}</ThemedText>
+          </SectionCard>
         </Pressable>
       </View>
-    </ThemedView>
+    </ScreenScaffold>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, paddingHorizontal: 18, paddingTop: 18 },
-  header: { paddingTop: 4, paddingBottom: 12, gap: 8 },
-  bigTitle: { fontSize: 28, fontWeight: '900', letterSpacing: 0.2, textAlign: 'center' },
-  subtitle: { fontSize: 13, lineHeight: 18, fontWeight: '700', textAlign: 'center' },
-  grid: { gap: 12 },
-  entryCard: { borderWidth: 1.5, borderRadius: 18, padding: 16, gap: 8 },
-  entryTitle: { fontSize: 18, lineHeight: 24, fontWeight: '900' },
-  entrySub: { fontSize: 13, lineHeight: 18, fontWeight: '800' },
+  content: { gap: uiTokens.spacing.md },
+  header: { paddingTop: uiTokens.layout.headerPaddingTop, paddingBottom: uiTokens.spacing.md, gap: uiTokens.spacing.sm, alignItems: 'center' },
+  orbit: { width: 74, height: 74, borderRadius: 999, borderWidth: 1, alignItems: 'center', justifyContent: 'center', marginBottom: 2 },
+  orbitMoon: { fontSize: 30, lineHeight: 34, fontWeight: '900' },
+  orbitStar: { position: 'absolute', right: 10, top: 12, fontSize: 14, lineHeight: 16, fontWeight: '900' },
+  kicker: { ...uiTokens.typography.meta, textAlign: 'center', letterSpacing: 1.2 },
+  bigTitle: uiTokens.typography.screenTitle,
+  subtitle: { fontSize: 13, lineHeight: 20, fontWeight: '700', textAlign: 'center' },
+  grid: { gap: uiTokens.spacing.md },
+  entryCard: { padding: 18, gap: uiTokens.spacing.sm, overflow: 'hidden' },
+  paperGlow: { position: 'absolute', right: -26, top: -22, width: 92, height: 92, borderRadius: 999, backgroundColor: 'rgba(209,187,222,0.16)' },
+  entryTop: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: uiTokens.spacing.md },
+  entryIcon: { fontSize: 28, lineHeight: 32, fontWeight: '900' },
+  entryKicker: { fontSize: 10, lineHeight: 14, fontWeight: '900', letterSpacing: 1.1 },
+  entryChip: { paddingVertical: 6 },
+  divider: { height: 1, opacity: 0.85 },
+  entryTitle: { fontSize: 21, lineHeight: 27, fontWeight: '900' },
+  entrySub: { fontSize: 13, lineHeight: 19, fontWeight: '800' },
+  entryMeta: { fontSize: 12, lineHeight: 16, fontWeight: '800', paddingTop: 2 },
 });

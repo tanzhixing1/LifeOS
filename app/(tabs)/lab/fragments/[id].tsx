@@ -1,16 +1,27 @@
-import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Alert, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { useThemeColor } from '@/hooks/use-theme-color';
+import { AppButton } from '@/core/ui/AppButton';
+import { AppChip } from '@/core/ui/AppChip';
+import { ScreenScaffold } from '@/core/ui/ScreenScaffold';
+import { SectionCard } from '@/core/ui/SectionCard';
+import { uiTokens } from '@/core/theme/tokens';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { type LabFragment, type MoodIntensity, type MoodKind, useFragmentStore } from '@/stores';
 
 const MOOD_OPTIONS: MoodKind[] = ['开心', '平静', '焦虑', '难过', '生气', '疲惫'];
 const INTENSITY_OPTIONS: MoodIntensity[] = [1, 2, 3, 4, 5];
+
+const MOOD_META: Record<MoodKind, { mark: string; color: string; bg: string }> = {
+  开心: { mark: '✦', color: '#C79B3B', bg: 'rgba(244,203,110,0.18)' },
+  平静: { mark: '☾', color: '#7D9A8A', bg: 'rgba(125,154,138,0.16)' },
+  焦虑: { mark: '◇', color: '#A98ABC', bg: 'rgba(169,138,188,0.16)' },
+  难过: { mark: '☁', color: '#7590B0', bg: 'rgba(117,144,176,0.16)' },
+  生气: { mark: '△', color: '#C87979', bg: 'rgba(200,121,121,0.15)' },
+  疲惫: { mark: '…', color: '#9A8F84', bg: 'rgba(154,143,132,0.16)' },
+};
 
 function formatDateTime(timestamp: number) {
   const d = new Date(timestamp);
@@ -29,14 +40,8 @@ function getListPath(fragment: LabFragment | null) {
 }
 
 export default function FragmentDetailScreen() {
-  const pageBg = useThemeColor({ light: '#F2EEE8', dark: '#171819' }, 'background');
-  const mutedText = useThemeColor({ light: '#7A756F', dark: '#A7B0BE' }, 'text');
-  const cardBg = useThemeColor({ light: '#F7F3EE', dark: '#1C1F22' }, 'background');
-  const cardBorder = useThemeColor({ light: '#D8D0C7', dark: '#2A3036' }, 'text');
-  const accent = useThemeColor({ light: '#D1BBDE', dark: '#D1BBDE' }, 'tint');
-  const tabBarHeight = useBottomTabBarHeight();
-  const insets = useSafeAreaInsets();
-  const bottomPadding = tabBarHeight + insets.bottom + 40;
+  const theme = useColorScheme() ?? 'light';
+  const palette = uiTokens.colors[theme];
 
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
@@ -66,9 +71,10 @@ export default function FragmentDetailScreen() {
   }, [fragment]);
 
   const canSave = fragment?.type === 'inspiration' ? content.trim().length > 0 : Boolean(fragment);
+  const moodMeta = fragment?.type === 'mood' ? MOOD_META[fragment.mood] : null;
 
   function goBackToList() {
-    router.replace(getListPath(fragment));
+    router.replace(getListPath(fragment) as any);
   }
 
   function saveChanges() {
@@ -94,7 +100,7 @@ export default function FragmentDetailScreen() {
         style: 'destructive',
         onPress: () => {
           removeFragment(fragment.id);
-          router.replace(targetPath);
+          router.replace(targetPath as any);
         },
       },
     ]);
@@ -102,180 +108,170 @@ export default function FragmentDetailScreen() {
 
   if (!fragment) {
     return (
-      <ThemedView style={[styles.screen, { backgroundColor: pageBg }]}>
+      <ScreenScaffold scroll>
         <View style={styles.header}>
           <Pressable onPress={() => router.replace('/(tabs)/lab')} style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1 }]}>
-            <ThemedText style={[styles.backText, { color: mutedText }]}>返回</ThemedText>
+            <ThemedText style={[styles.backText, { color: palette.muted }]}>返回</ThemedText>
           </Pressable>
           <ThemedText style={styles.bigTitle}>碎片详情</ThemedText>
           <View style={{ width: 40 }} />
         </View>
-        <View style={[styles.card, { backgroundColor: cardBg, borderColor: cardBorder }]}>
+        <SectionCard elevated style={styles.missingCard}>
+          <ThemedText style={[styles.emptyMark, { color: palette.accentStrong }]}>?</ThemedText>
           <ThemedText style={styles.cardTitle}>记录不存在</ThemedText>
-          <ThemedText style={[styles.bodyText, { color: mutedText }]}>这条记录可能已经被删除。</ThemedText>
-        </View>
-      </ThemedView>
+          <ThemedText style={[styles.bodyText, { color: palette.muted }]}>这条记录可能已经被删除。</ThemedText>
+        </SectionCard>
+      </ScreenScaffold>
     );
   }
 
   return (
-    <ThemedView style={[styles.screen, { backgroundColor: pageBg }]}>
+    <ScreenScaffold scroll contentContainerStyle={styles.content}>
       <View style={styles.header}>
         <Pressable onPress={goBackToList} style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1 }]}>
-          <ThemedText style={[styles.backText, { color: mutedText }]}>返回</ThemedText>
+          <ThemedText style={[styles.backText, { color: palette.muted }]}>返回</ThemedText>
         </Pressable>
-        <ThemedText style={styles.bigTitle}>{fragment.type === 'mood' ? '心情详情' : '灵感详情'}</ThemedText>
+        <View style={styles.titleWrap}>
+          <ThemedText style={[styles.kicker, { color: palette.accentStrong }]}>FRAGMENT PAGE</ThemedText>
+          <ThemedText style={styles.bigTitle}>{fragment.type === 'mood' ? '心情详情' : '灵感详情'}</ThemedText>
+        </View>
         <View style={{ width: 40 }} />
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.content, { paddingBottom: bottomPadding }]}>
-        <View style={[styles.card, { backgroundColor: cardBg, borderColor: cardBorder }]}>
-          {fragment.type === 'inspiration' ? (
-            editing ? (
-              <TextInput
-                value={content}
-                onChangeText={setContent}
-                placeholder="灵感内容"
-                placeholderTextColor={mutedText}
-                multiline
-                textAlignVertical="top"
-                style={[styles.input, styles.largeInput, { color: mutedText, borderColor: cardBorder }]}
-              />
+      <SectionCard elevated style={[styles.readingCard, fragment.type === 'mood' && moodMeta ? { borderColor: moodMeta.color } : { borderColor: palette.accent }]}>
+        <View style={[styles.paperGlow, { backgroundColor: fragment.type === 'mood' && moodMeta ? moodMeta.bg : palette.accentSoft }]} />
+        <View style={styles.detailHeader}>
+          <ThemedText style={[styles.detailMark, { color: fragment.type === 'mood' && moodMeta ? moodMeta.color : palette.accentStrong }]}>
+            {fragment.type === 'mood' && moodMeta ? moodMeta.mark : '✦'}
+          </ThemedText>
+          <ThemedText style={[styles.detailType, { color: palette.muted }]}>{fragment.type === 'mood' ? '情绪观察' : '灵感纸片'}</ThemedText>
+        </View>
+
+        <View style={[styles.rule, { backgroundColor: palette.border }]} />
+
+        {fragment.type === 'inspiration' ? (
+          editing ? (
+            <TextInput
+              value={content}
+              onChangeText={setContent}
+              placeholder="灵感内容"
+              placeholderTextColor={palette.muted}
+              multiline
+              textAlignVertical="top"
+              style={[styles.input, styles.largeInput, { color: palette.text, backgroundColor: palette.input, borderColor: palette.border }]}
+            />
+          ) : (
+            <ThemedText style={styles.fullText}>{fragment.content}</ThemedText>
+          )
+        ) : (
+          <View style={styles.moodContent}>
+            {editing ? (
+              <>
+                <ThemedText style={[styles.label, { color: palette.muted }]}>心情</ThemedText>
+                <View style={styles.optionGrid}>
+                  {MOOD_OPTIONS.map((option) => {
+                    const meta = MOOD_META[option];
+                    const selected = option === mood;
+                    return (
+                      <AppChip
+                        key={option}
+                        title={`${meta.mark} ${option}`}
+                        selected={selected}
+                        onPress={() => setMood(option)}
+                        style={selected ? { backgroundColor: meta.bg, borderColor: meta.color } : undefined}
+                        textStyle={selected ? { color: meta.color } : undefined}
+                      />
+                    );
+                  })}
+                </View>
+
+                <ThemedText style={[styles.label, { color: palette.muted }]}>强度</ThemedText>
+                <View style={styles.intensityRow}>
+                  {INTENSITY_OPTIONS.map((option) => (
+                    <AppChip key={option} title={String(option)} selected={option === intensity} onPress={() => setIntensity(option)} style={styles.intensityChip} />
+                  ))}
+                </View>
+
+                <TextInput
+                  value={note}
+                  onChangeText={setNote}
+                  placeholder="备注"
+                  placeholderTextColor={palette.muted}
+                  multiline
+                  textAlignVertical="top"
+                  style={[styles.input, { color: palette.text, backgroundColor: palette.input, borderColor: palette.border }]}
+                />
+              </>
             ) : (
-              <ThemedText style={styles.fullText}>{fragment.content}</ThemedText>
-            )
-          ) : (
-            <View style={styles.moodContent}>
-              {editing ? (
-                <>
-                  <ThemedText style={styles.label}>心情</ThemedText>
-                  <View style={styles.optionGrid}>
-                    {MOOD_OPTIONS.map((option) => {
-                      const isActive = option === mood;
-                      return (
-                        <Pressable
-                          key={option}
-                          onPress={() => setMood(option)}
-                          style={({ pressed }) => [
-                            styles.choiceChip,
-                            {
-                              backgroundColor: isActive ? accent : 'transparent',
-                              borderColor: isActive ? accent : cardBorder,
-                              opacity: pressed ? 0.86 : 1,
-                            },
-                          ]}>
-                          <ThemedText style={[styles.choiceText, { color: isActive ? '#1D1B1E' : mutedText }]}>{option}</ThemedText>
-                        </Pressable>
-                      );
-                    })}
-                  </View>
+              <>
+                <View style={styles.moodTitleRow}>
+                  <ThemedText style={[styles.cardTitle, { color: moodMeta?.color ?? palette.text }]}>{fragment.mood}</ThemedText>
+                  <ThemedText style={[styles.bodyText, { color: palette.muted }]}>强度 {fragment.intensity}/5</ThemedText>
+                </View>
+                <View style={styles.miniMeter}>
+                  {INTENSITY_OPTIONS.map((level) => (
+                    <View key={level} style={[styles.miniMeterDot, { backgroundColor: moodMeta && level <= fragment.intensity ? moodMeta.color : palette.border }]} />
+                  ))}
+                </View>
+                <ThemedText style={styles.fullText}>{fragment.note.trim().length > 0 ? fragment.note : '没有备注'}</ThemedText>
+              </>
+            )}
+          </View>
+        )}
+      </SectionCard>
 
-                  <ThemedText style={styles.label}>强度</ThemedText>
-                  <View style={styles.intensityRow}>
-                    {INTENSITY_OPTIONS.map((option) => {
-                      const isActive = option === intensity;
-                      return (
-                        <Pressable
-                          key={option}
-                          onPress={() => setIntensity(option)}
-                          style={({ pressed }) => [
-                            styles.intensityChip,
-                            {
-                              backgroundColor: isActive ? accent : 'transparent',
-                              borderColor: isActive ? accent : cardBorder,
-                              opacity: pressed ? 0.86 : 1,
-                            },
-                          ]}>
-                          <ThemedText style={[styles.choiceText, { color: isActive ? '#1D1B1E' : mutedText }]}>{option}</ThemedText>
-                        </Pressable>
-                      );
-                    })}
-                  </View>
+      <SectionCard style={styles.metaCard}>
+        <ThemedText style={[styles.metaText, { color: palette.muted }]}>创建：{formatDateTime(fragment.createdAt)}</ThemedText>
+        {fragment.updatedAt ? (
+          <ThemedText style={[styles.metaText, { color: palette.muted }]}>更新：{formatDateTime(fragment.updatedAt)}</ThemedText>
+        ) : null}
+      </SectionCard>
 
-                  <TextInput
-                    value={note}
-                    onChangeText={setNote}
-                    placeholder="备注"
-                    placeholderTextColor={mutedText}
-                    multiline
-                    textAlignVertical="top"
-                    style={[styles.input, { color: mutedText, borderColor: cardBorder }]}
-                  />
-                </>
-              ) : (
-                <>
-                  <ThemedText style={styles.cardTitle}>{fragment.mood}</ThemedText>
-                  <ThemedText style={[styles.bodyText, { color: mutedText }]}>强度 {fragment.intensity}/5</ThemedText>
-                  <ThemedText style={styles.fullText}>{fragment.note.trim().length > 0 ? fragment.note : '没有备注'}</ThemedText>
-                </>
-              )}
-            </View>
-          )}
-        </View>
+      <View style={styles.actions}>
+        {editing ? (
+          <>
+            <AppButton disabled={!canSave} title="保存" onPress={saveChanges} />
+            <AppButton variant="outline" title="取消" onPress={() => setEditing(false)} />
+          </>
+        ) : (
+          <AppButton title="修改" onPress={() => setEditing(true)} />
+        )}
 
-        <View style={[styles.card, { backgroundColor: cardBg, borderColor: cardBorder }]}>
-          <ThemedText style={[styles.metaText, { color: mutedText }]}>创建：{formatDateTime(fragment.createdAt)}</ThemedText>
-          {fragment.updatedAt ? (
-            <ThemedText style={[styles.metaText, { color: mutedText }]}>更新：{formatDateTime(fragment.updatedAt)}</ThemedText>
-          ) : null}
-        </View>
-
-        <View style={styles.actions}>
-          {editing ? (
-            <>
-              <Pressable
-                disabled={!canSave}
-                onPress={saveChanges}
-                style={({ pressed }) => [
-                  styles.primaryBtn,
-                  { backgroundColor: accent, opacity: !canSave ? 0.45 : pressed ? 0.9 : 1 },
-                ]}>
-                <ThemedText style={styles.primaryText}>保存</ThemedText>
-              </Pressable>
-              <Pressable onPress={() => setEditing(false)} style={({ pressed }) => [styles.secondaryBtn, { borderColor: cardBorder, opacity: pressed ? 0.8 : 1 }]}>
-                <ThemedText style={[styles.secondaryText, { color: mutedText }]}>取消</ThemedText>
-              </Pressable>
-            </>
-          ) : (
-            <Pressable onPress={() => setEditing(true)} style={({ pressed }) => [styles.primaryBtn, { backgroundColor: accent, opacity: pressed ? 0.9 : 1 }]}>
-              <ThemedText style={styles.primaryText}>修改</ThemedText>
-            </Pressable>
-          )}
-
-          <Pressable onPress={confirmDelete} style={({ pressed }) => [styles.deleteBtn, { opacity: pressed ? 0.8 : 1 }]}>
-            <ThemedText style={styles.deleteText}>删除</ThemedText>
-          </Pressable>
-        </View>
-      </ScrollView>
-    </ThemedView>
+        <AppButton variant="danger" title="删除" onPress={confirmDelete} />
+      </View>
+    </ScreenScaffold>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, paddingHorizontal: 18, paddingTop: 18 },
-  header: { paddingTop: 4, paddingBottom: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  bigTitle: { fontSize: 24, fontWeight: '900', letterSpacing: 0, textAlign: 'center' },
-  backText: { fontSize: 13, lineHeight: 16, fontWeight: '900', width: 40 },
-  content: { gap: 12, paddingTop: 2 },
-  card: { borderWidth: 1, borderRadius: 18, padding: 14, gap: 10 },
-  cardTitle: { fontSize: 20, lineHeight: 26, fontWeight: '900' },
-  fullText: { fontSize: 17, lineHeight: 25, fontWeight: '800' },
+  content: { gap: uiTokens.spacing.md },
+  header: { paddingTop: uiTokens.layout.headerPaddingTop, paddingBottom: uiTokens.spacing.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  titleWrap: { alignItems: 'center', gap: 2 },
+  kicker: { ...uiTokens.typography.meta, letterSpacing: 1.1 },
+  bigTitle: uiTokens.typography.pageTitle,
+  backText: { ...uiTokens.typography.chip, width: 40 },
+  missingCard: { alignItems: 'center' },
+  emptyMark: { fontSize: 24, lineHeight: 28, fontWeight: '900' },
+  readingCard: { gap: uiTokens.spacing.md, overflow: 'hidden', padding: 18 },
+  paperGlow: { position: 'absolute', right: -36, top: -36, width: 130, height: 130, borderRadius: 999 },
+  detailHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  detailMark: { fontSize: 28, lineHeight: 32, fontWeight: '900' },
+  detailType: { ...uiTokens.typography.meta, letterSpacing: 1 },
+  rule: { height: 1, opacity: 0.85 },
+  cardTitle: { fontSize: 22, lineHeight: 28, fontWeight: '900' },
+  fullText: { fontSize: 17, lineHeight: 27, fontWeight: '800' },
   bodyText: { fontSize: 14, lineHeight: 20, fontWeight: '800' },
-  metaText: { fontSize: 12, lineHeight: 16, fontWeight: '800' },
-  moodContent: { gap: 12 },
-  label: { fontSize: 14, lineHeight: 18, fontWeight: '900' },
-  optionGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  choiceChip: { borderWidth: 1.5, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 8 },
-  choiceText: { fontSize: 13, lineHeight: 16, fontWeight: '900' },
-  intensityRow: { flexDirection: 'row', gap: 8 },
-  intensityChip: { width: 40, height: 36, borderWidth: 1.5, borderRadius: 999, alignItems: 'center', justifyContent: 'center' },
-  input: { minHeight: 88, borderWidth: 1, borderRadius: 14, padding: 12, fontSize: 15, lineHeight: 21, fontWeight: '700' },
-  largeInput: { minHeight: 180 },
-  actions: { gap: 10 },
-  primaryBtn: { borderRadius: 16, paddingVertical: 13, alignItems: 'center' },
-  primaryText: { color: '#1D1B1E', fontSize: 15, lineHeight: 18, fontWeight: '900' },
-  secondaryBtn: { borderWidth: 1, borderRadius: 16, paddingVertical: 13, alignItems: 'center' },
-  secondaryText: { fontSize: 15, lineHeight: 18, fontWeight: '900' },
-  deleteBtn: { borderRadius: 16, paddingVertical: 13, alignItems: 'center', backgroundColor: '#D96C6C' },
-  deleteText: { color: '#fff', fontSize: 15, lineHeight: 18, fontWeight: '900' },
+  metaCard: { paddingVertical: uiTokens.spacing.md },
+  metaText: uiTokens.typography.meta,
+  moodContent: { gap: uiTokens.spacing.md },
+  moodTitleRow: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: uiTokens.spacing.md },
+  label: uiTokens.typography.chip,
+  optionGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: uiTokens.spacing.sm },
+  intensityRow: { flexDirection: 'row', gap: uiTokens.spacing.sm },
+  intensityChip: { width: 42, paddingHorizontal: 0 },
+  miniMeter: { flexDirection: 'row', gap: 5 },
+  miniMeterDot: { width: 22, height: 6, borderRadius: 999 },
+  input: { minHeight: 92, borderWidth: 1, borderRadius: uiTokens.radius.md, padding: uiTokens.spacing.md, fontSize: 15, lineHeight: 21, fontWeight: '700' },
+  largeInput: { minHeight: 190 },
+  actions: { gap: uiTokens.spacing.sm },
 });

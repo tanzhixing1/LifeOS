@@ -1,23 +1,21 @@
-import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import React, { useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { useThemeColor } from '@/hooks/use-theme-color';
+import { AppButton } from '@/core/ui/AppButton';
+import { AppChip } from '@/core/ui/AppChip';
+import { ScreenScaffold } from '@/core/ui/ScreenScaffold';
+import { SectionCard } from '@/core/ui/SectionCard';
+import { uiTokens } from '@/core/theme/tokens';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { buildBackupSnapshot, buildBackupSummary, formatBackupJSON } from '@/services/storage/backup';
 import { useMessengerStore } from '@/stores/messengerStore';
 
 export default function SettingsHomeScreen() {
-  const pageBg = useThemeColor({ light: '#F2EEE8', dark: '#171819' }, 'background');
-  const mutedText = useThemeColor({ light: '#7A756F', dark: '#A7B0BE' }, 'text');
-  const cardBg = useThemeColor({ light: '#F7F3EE', dark: '#1C1F22' }, 'background');
-  const cardBorder = useThemeColor({ light: '#D8D0C7', dark: '#2A3036' }, 'text');
-  const accent = useThemeColor({ light: '#D1BBDE', dark: '#D1BBDE' }, 'tint');
-  const tabBarHeight = useBottomTabBarHeight();
+  const theme = useColorScheme() ?? 'light';
+  const palette = uiTokens.colors[theme];
   const insets = useSafeAreaInsets();
-  const bottomPadding = tabBarHeight + insets.bottom + 40;
 
   const mutedDateISO = useMessengerStore((s) => s.mutedDateISO);
   const dailyCountByDateISO = useMessengerStore((s) => s.dailyCountByDateISO);
@@ -52,148 +50,114 @@ export default function SettingsHomeScreen() {
   }
 
   return (
-    <ThemedView style={[styles.screen, { backgroundColor: pageBg }]}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPadding }]}>
-        <View style={styles.header}>
-          <ThemedText style={styles.bigTitle}>设置</ThemedText>
-          <ThemedText style={[styles.subtitle, { color: mutedText }]}>
-            入口先放在这里，清楚、安静、能找回来。
-          </ThemedText>
-        </View>
+    <ScreenScaffold scroll contentContainerStyle={styles.content}>
+      <View style={styles.header}>
+        <ThemedText style={styles.kicker}>CONTROL ROOM</ThemedText>
+        <ThemedText style={styles.bigTitle}>设置</ThemedText>
+        <ThemedText style={[styles.subtitle, { color: palette.muted }]}>可靠的入口放在这里。安静一点，也安心一点。</ThemedText>
+      </View>
 
-        <View style={[styles.card, { backgroundColor: cardBg, borderColor: cardBorder }]}>
+      <SectionCard elevated>
+        <View style={styles.cardHeaderRow}>
           <ThemedText style={styles.cardTitle}>语境通知</ThemedText>
-          <ThemedText style={[styles.cardSub, { color: mutedText }]}>
-            今日已弹：{todayCount}/3 · 今日静音：{isMutedToday ? '是' : '否'}
-          </ThemedText>
+          <AppChip title={isMutedToday ? '今日静音' : `${todayCount}/3`} selected={isMutedToday} style={styles.statusChip} />
+        </View>
+        <ThemedText style={[styles.cardSub, { color: palette.muted }]}>
+          今日已弹：{todayCount}/3 · 今日静音：{isMutedToday ? '是' : '否'}
+        </ThemedText>
 
-          <View style={styles.row}>
-            <Pressable
-              onPress={() => (isMutedToday ? unmute() : muteToday())}
-              style={({ pressed }) => [
-                styles.chip,
-                { borderColor: accent, opacity: pressed ? 0.92 : 1 },
-              ]}>
-              <ThemedText style={[styles.chipText, { color: accent }]}>{isMutedToday ? '恢复通知' : '今天别吵我'}</ThemedText>
-            </Pressable>
-            <Pressable
-              onPress={() => resetTodayCount()}
-              style={({ pressed }) => [
-                styles.chip,
-                { borderColor: cardBorder, opacity: pressed ? 0.92 : 1 },
-              ]}>
-              <ThemedText style={[styles.chipText, { color: mutedText }]}>清零计数</ThemedText>
-            </Pressable>
-          </View>
-
-          <Pressable
-            onPress={() => setTestVisible(true)}
-            style={({ pressed }) => [
-              styles.primaryBtn,
-              { backgroundColor: accent, opacity: pressed ? 0.92 : 1 },
-            ]}>
-            <ThemedText style={styles.primaryBtnText}>触发测试通知</ThemedText>
-          </Pressable>
+        <View style={styles.row}>
+          <AppButton variant="outline" title={isMutedToday ? '恢复通知' : '今天别吵我'} onPress={() => (isMutedToday ? unmute() : muteToday())} style={styles.rowButton} />
+          <AppButton variant="outline" title="清零计数" onPress={() => resetTodayCount()} style={styles.rowButton} />
         </View>
 
-        <View style={[styles.card, { backgroundColor: cardBg, borderColor: cardBorder }]}>
-          <View style={styles.cardHeaderRow}>
-            <ThemedText style={styles.cardTitle}>数据备份</ThemedText>
-            <ThemedText style={[styles.cardSub, { color: mutedText }]}>预览版</ThemedText>
-          </View>
+        <AppButton title="触发测试通知" onPress={() => setTestVisible(true)} />
+      </SectionCard>
 
-          <View style={styles.summaryGrid}>
-            <SummaryRow label="Todo" value={`${backupSummary.todosTotal} 条 / 已完成 ${backupSummary.todosDone}`} mutedText={mutedText} />
-            <SummaryRow label="Habit" value={`${backupSummary.habitsTotal} 个 / 已归档 ${backupSummary.habitsArchived}`} mutedText={mutedText} />
-            <SummaryRow label="Game" value={attrSummary} mutedText={mutedText} />
-            <SummaryRow label="Location" value={backupSummary.gameLocation ?? '未记录'} mutedText={mutedText} />
-            <SummaryRow label="Event" value={backupSummary.gameEventId} mutedText={mutedText} />
-            <SummaryRow label="Inspiration" value={`${backupSummary.inspirationsTotal} 条`} mutedText={mutedText} />
-            <SummaryRow label="Mood" value={`${backupSummary.moodsTotal} 条`} mutedText={mutedText} />
-            <SummaryRow label="Reward logs" value={backupSummary.rewardLogsTotal === 0 ? '暂未记录' : `${backupSummary.rewardLogsTotal} 条`} mutedText={mutedText} />
-          </View>
-
-          <Pressable
-            onPress={openBackupPreview}
-            style={({ pressed }) => [
-              styles.primaryBtn,
-              { backgroundColor: accent, opacity: pressed ? 0.92 : 1 },
-            ]}>
-            <ThemedText style={styles.primaryBtnText}>查看 JSON 预览</ThemedText>
-          </Pressable>
+      <SectionCard elevated>
+        <View style={styles.cardHeaderRow}>
+          <ThemedText style={styles.cardTitle}>数据备份</ThemedText>
+          <AppChip title="预览版" selected style={styles.statusChip} />
         </View>
-      </ScrollView>
+        <ThemedText style={[styles.cardSub, { color: palette.muted }]}>先查看本地数据摘要和 JSON，不做导入、不写文件。</ThemedText>
+
+        <View style={[styles.summaryPanel, { backgroundColor: palette.input, borderColor: palette.border }]}>
+          <SummaryRow label="Todo" value={`${backupSummary.todosTotal} 条 / 已完成 ${backupSummary.todosDone}`} mutedText={palette.muted} />
+          <SummaryRow label="Habit" value={`${backupSummary.habitsTotal} 个 / 已归档 ${backupSummary.habitsArchived}`} mutedText={palette.muted} />
+          <SummaryRow label="Game" value={attrSummary} mutedText={palette.muted} />
+          <SummaryRow label="Location" value={backupSummary.gameLocation ?? '未记录'} mutedText={palette.muted} />
+          <SummaryRow label="Event" value={backupSummary.gameEventId} mutedText={palette.muted} />
+          <SummaryRow label="Inspiration" value={`${backupSummary.inspirationsTotal} 条`} mutedText={palette.muted} />
+          <SummaryRow label="Mood" value={`${backupSummary.moodsTotal} 条`} mutedText={palette.muted} />
+          <SummaryRow label="Reward logs" value={backupSummary.rewardLogsTotal === 0 ? '暂未记录' : `${backupSummary.rewardLogsTotal} 条`} mutedText={palette.muted} />
+        </View>
+
+        <AppButton title="查看 JSON 预览" onPress={openBackupPreview} />
+      </SectionCard>
 
       <Modal visible={testVisible} transparent animationType="fade" onRequestClose={() => setTestVisible(false)}>
-        <Pressable style={styles.mask} onPress={() => setTestVisible(false)}>
+        <Pressable style={[styles.mask, { backgroundColor: palette.overlay }]} onPress={() => setTestVisible(false)}>
           <Pressable style={styles.maskInner} />
         </Pressable>
-        <View style={[styles.center, { paddingBottom: insets.bottom + 18 }]}>
-          <View style={[styles.panel, { backgroundColor: cardBg, borderColor: cardBorder }]}>
+        <View style={[styles.center, { paddingBottom: insets.bottom + uiTokens.spacing.xl }]}>
+          <SectionCard elevated style={styles.panel}>
             <ThemedText style={styles.panelTitle}>挑一个触发类型</ThemedText>
 
-            <Pressable
+            <AppButton
+              variant="outline"
+              title="新建"
               onPress={() => {
                 trigger({ type: 'todo_created', key: `test.todo_created.${Date.now()}`, title: '测试：新建', body: '你刚新建了一个待办。嗯，确实是你。', force: true });
                 setTestVisible(false);
               }}
-              style={({ pressed }) => [styles.panelBtn, { borderColor: accent, opacity: pressed ? 0.92 : 1 }]}>
-              <ThemedText style={[styles.panelBtnText, { color: accent }]}>新建</ThemedText>
-            </Pressable>
-
-            <Pressable
+            />
+            <AppButton
+              variant="outline"
+              title="完成"
               onPress={() => {
                 trigger({ type: 'todo_completed', key: `test.todo_completed.${Date.now()}`, title: '测试：完成', body: '完成了一项待办。你今天挺像个人的。', force: true });
                 setTestVisible(false);
               }}
-              style={({ pressed }) => [styles.panelBtn, { borderColor: accent, opacity: pressed ? 0.92 : 1 }]}>
-              <ThemedText style={[styles.panelBtnText, { color: accent }]}>完成</ThemedText>
-            </Pressable>
-
-            <Pressable
+            />
+            <AppButton
+              variant="outline"
+              title="到期前"
               onPress={() => {
                 trigger({ type: 'todo_due_soon', key: `test.todo_due_soon.${Date.now()}`, title: '测试：到期前', body: '到期前提醒：再拖就真到期了。', force: true });
                 setTestVisible(false);
               }}
-              style={({ pressed }) => [styles.panelBtn, { borderColor: accent, opacity: pressed ? 0.92 : 1 }]}>
-              <ThemedText style={[styles.panelBtnText, { color: accent }]}>到期前</ThemedText>
-            </Pressable>
-
-            <Pressable
+            />
+            <AppButton
+              variant="outline"
+              title="停滞"
               onPress={() => {
                 trigger({ type: 'habit_stagnant', key: `test.habit_stagnant.${Date.now()}`, title: '测试：停滞', body: '打卡停滞：你是把动力丢哪了？', force: true });
                 setTestVisible(false);
               }}
-              style={({ pressed }) => [styles.panelBtn, { borderColor: accent, opacity: pressed ? 0.92 : 1 }]}>
-              <ThemedText style={[styles.panelBtnText, { color: accent }]}>停滞</ThemedText>
-            </Pressable>
-          </View>
+            />
+          </SectionCard>
         </View>
       </Modal>
 
       <Modal visible={backupVisible} transparent animationType="fade" onRequestClose={() => setBackupVisible(false)}>
-        <Pressable style={styles.mask} onPress={() => setBackupVisible(false)}>
+        <Pressable style={[styles.mask, { backgroundColor: palette.overlay }]} onPress={() => setBackupVisible(false)}>
           <Pressable style={styles.maskInner} />
         </Pressable>
-        <View style={[styles.backupCenter, { paddingBottom: insets.bottom + 18 }]}>
-          <View style={[styles.backupPanel, { backgroundColor: cardBg, borderColor: cardBorder }]}>
+        <View style={[styles.backupCenter, { paddingBottom: insets.bottom + uiTokens.spacing.xl }]}>
+          <SectionCard elevated style={styles.backupPanel}>
             <View style={styles.cardHeaderRow}>
               <ThemedText style={styles.panelTitle}>JSON 预览</ThemedText>
-              <Pressable
-                onPress={() => setBackupVisible(false)}
-                style={({ pressed }) => [styles.closeBtn, { borderColor: cardBorder, opacity: pressed ? 0.8 : 1 }]}>
-                <ThemedText style={[styles.closeBtnText, { color: mutedText }]}>关闭</ThemedText>
-              </Pressable>
+              <AppButton variant="ghost" title="关闭" onPress={() => setBackupVisible(false)} style={styles.closeBtn} />
             </View>
-            <ScrollView style={styles.jsonScroll} contentContainerStyle={styles.jsonContent}>
-              <ThemedText selectable style={[styles.jsonText, { color: mutedText }]}>
+            <ScrollView style={[styles.jsonScroll, { backgroundColor: palette.input }]} contentContainerStyle={styles.jsonContent}>
+              <ThemedText selectable style={[styles.jsonText, { color: palette.muted }]}>
                 {backupJSON}
               </ThemedText>
             </ScrollView>
-          </View>
+          </SectionCard>
         </View>
       </Modal>
-    </ThemedView>
+    </ScreenScaffold>
   );
 }
 
@@ -213,37 +177,31 @@ function SummaryRow({ label, value, mutedText }: SummaryRowProps) {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, paddingHorizontal: 18, paddingTop: 18 },
-  scrollContent: { gap: 12 },
-  header: { paddingTop: 4, paddingBottom: 12, gap: 8 },
-  bigTitle: { fontSize: 28, fontWeight: '900', letterSpacing: 0, textAlign: 'center' },
-  subtitle: { fontSize: 13, lineHeight: 18, fontWeight: '700', textAlign: 'center' },
-  card: { borderWidth: 1, borderRadius: 18, padding: 14, gap: 10 },
-  cardHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
-  cardTitle: { fontSize: 16, lineHeight: 20, fontWeight: '900' },
+  content: { gap: uiTokens.spacing.md },
+  header: { paddingTop: uiTokens.layout.headerPaddingTop, paddingBottom: uiTokens.spacing.md, gap: uiTokens.spacing.sm },
+  kicker: { ...uiTokens.typography.meta, textAlign: 'center', letterSpacing: 1.2 },
+  bigTitle: uiTokens.typography.screenTitle,
+  subtitle: { fontSize: 13, lineHeight: 19, fontWeight: '700', textAlign: 'center' },
+  cardHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: uiTokens.spacing.md },
+  cardTitle: uiTokens.typography.cardTitle,
   cardSub: { fontSize: 13, lineHeight: 18, fontWeight: '800' },
-  row: { flexDirection: 'row', gap: 10, flexWrap: 'wrap' },
-  chip: { borderWidth: 1.5, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8 },
-  chipText: { fontSize: 13, lineHeight: 16, fontWeight: '900' },
-  primaryBtn: { borderRadius: 18, paddingVertical: 14, alignItems: 'center', marginTop: 4 },
-  primaryBtnText: { color: '#1D1B1E', fontSize: 15, lineHeight: 18, fontWeight: '900' },
-  summaryGrid: { gap: 8 },
-  summaryRow: { borderRadius: 12, paddingVertical: 8, gap: 2 },
-  summaryLabel: { fontSize: 13, lineHeight: 16, fontWeight: '900' },
+  statusChip: { paddingVertical: 6 },
+  row: { flexDirection: 'row', gap: uiTokens.spacing.sm, flexWrap: 'wrap' },
+  rowButton: { flex: 1, minWidth: 120 },
+  summaryPanel: { borderWidth: 1, borderRadius: uiTokens.radius.md, padding: uiTokens.spacing.md, gap: uiTokens.spacing.sm },
+  summaryRow: { gap: 2 },
+  summaryLabel: uiTokens.typography.chip,
   summaryValue: { fontSize: 13, lineHeight: 18, fontWeight: '800' },
 
-  mask: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.35)' },
+  mask: { ...StyleSheet.absoluteFillObject },
   maskInner: { flex: 1 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 18 },
-  panel: { width: '100%', borderWidth: 1, borderRadius: 18, padding: 14, gap: 10 },
-  panelTitle: { fontSize: 15, lineHeight: 18, fontWeight: '900' },
-  panelBtn: { borderWidth: 1.5, borderRadius: 14, paddingVertical: 12, paddingHorizontal: 12 },
-  panelBtnText: { fontSize: 14, lineHeight: 18, fontWeight: '900', textAlign: 'center' },
-  backupCenter: { flex: 1, padding: 18, justifyContent: 'center' },
-  backupPanel: { maxHeight: '82%', width: '100%', borderWidth: 1, borderRadius: 18, padding: 14, gap: 10 },
-  closeBtn: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 7 },
-  closeBtnText: { fontSize: 13, lineHeight: 16, fontWeight: '900' },
-  jsonScroll: { borderRadius: 12 },
-  jsonContent: { paddingBottom: 8 },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: uiTokens.spacing.xl },
+  panel: { width: '100%' },
+  panelTitle: { ...uiTokens.typography.cardTitle, textAlign: 'center' },
+  backupCenter: { flex: 1, padding: uiTokens.spacing.xl, justifyContent: 'center' },
+  backupPanel: { maxHeight: '82%', width: '100%' },
+  closeBtn: { minHeight: 34, paddingVertical: 6, paddingHorizontal: uiTokens.spacing.md },
+  jsonScroll: { borderRadius: uiTokens.radius.md },
+  jsonContent: { padding: uiTokens.spacing.md },
   jsonText: { fontSize: 12, lineHeight: 17, fontWeight: '700' },
 });

@@ -1,12 +1,14 @@
-import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { router } from 'expo-router';
 import React, { useMemo, useState } from 'react';
 import { Alert, FlatList, Pressable, StyleSheet, TextInput, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { useThemeColor } from '@/hooks/use-theme-color';
+import { AppButton } from '@/core/ui/AppButton';
+import { AppChip } from '@/core/ui/AppChip';
+import { ScreenScaffold } from '@/core/ui/ScreenScaffold';
+import { SectionCard } from '@/core/ui/SectionCard';
+import { uiTokens } from '@/core/theme/tokens';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { type InspirationFragment, useFragmentStore } from '@/stores';
 
 function formatCreatedAt(timestamp: number) {
@@ -19,14 +21,8 @@ function formatCreatedAt(timestamp: number) {
 }
 
 export default function InspirationScreen() {
-  const pageBg = useThemeColor({ light: '#F2EEE8', dark: '#171819' }, 'background');
-  const mutedText = useThemeColor({ light: '#7A756F', dark: '#A7B0BE' }, 'text');
-  const cardBg = useThemeColor({ light: '#F7F3EE', dark: '#1C1F22' }, 'background');
-  const cardBorder = useThemeColor({ light: '#D8D0C7', dark: '#2A3036' }, 'text');
-  const accent = useThemeColor({ light: '#D1BBDE', dark: '#D1BBDE' }, 'tint');
-  const tabBarHeight = useBottomTabBarHeight();
-  const insets = useSafeAreaInsets();
-  const listBottomPadding = tabBarHeight + insets.bottom + 40;
+  const theme = useColorScheme() ?? 'light';
+  const palette = uiTokens.colors[theme];
 
   const [content, setContent] = useState('');
   const fragments = useFragmentStore((s) => s.fragments);
@@ -62,12 +58,15 @@ export default function InspirationScreen() {
   }
 
   return (
-    <ThemedView style={[styles.screen, { backgroundColor: pageBg }]}>
+    <ScreenScaffold>
       <View style={styles.header}>
         <Pressable onPress={() => router.replace('/(tabs)/lab')} style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1 }]}>
-          <ThemedText style={[styles.backText, { color: mutedText }]}>返回</ThemedText>
+          <ThemedText style={[styles.backText, { color: palette.muted }]}>返回</ThemedText>
         </Pressable>
-        <ThemedText style={styles.bigTitle}>灵感碎片</ThemedText>
+        <View style={styles.titleWrap}>
+          <ThemedText style={[styles.kicker, { color: palette.accentStrong }]}>SPARK ARCHIVE</ThemedText>
+          <ThemedText style={styles.bigTitle}>灵感碎片</ThemedText>
+        </View>
         <View style={{ width: 40 }} />
       </View>
 
@@ -75,85 +74,93 @@ export default function InspirationScreen() {
         data={inspirations}
         keyExtractor={(item) => item.id}
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={[styles.listContent, { paddingBottom: listBottomPadding }]}
-        ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
+        contentContainerStyle={styles.listContent}
+        ItemSeparatorComponent={() => <View style={{ height: uiTokens.spacing.md }} />}
         ListHeaderComponent={
           <View style={styles.topContent}>
-            <View style={[styles.inputCard, { backgroundColor: cardBg, borderColor: cardBorder }]}>
+            <SectionCard elevated style={[styles.noteInputCard, { borderColor: palette.accent }]}>
+              <View style={[styles.tape, { backgroundColor: palette.accentSoft }]} />
+              <View style={styles.noteHeader}>
+                <ThemedText style={styles.sectionTitle}>写下一点火花</ThemedText>
+                <AppChip title="便签" selected style={styles.noteChip} />
+              </View>
               <TextInput
                 value={content}
                 onChangeText={setContent}
                 placeholder="先记下来，之后再理解。"
-                placeholderTextColor={mutedText}
+                placeholderTextColor={palette.muted}
                 multiline
-                style={[styles.input, { color: mutedText }]}
+                style={[styles.input, { color: palette.text, backgroundColor: palette.input, borderColor: palette.border }]}
                 textAlignVertical="top"
               />
-              <Pressable
-                disabled={!canSave}
-                onPress={saveInspiration}
-                style={({ pressed }) => [
-                  styles.primaryBtn,
-                  { backgroundColor: accent, opacity: !canSave ? 0.45 : pressed ? 0.9 : 1 },
-                ]}>
-                <ThemedText style={styles.primaryText}>保存灵感</ThemedText>
-              </Pressable>
-            </View>
+              <AppButton disabled={!canSave} onPress={saveInspiration} title="保存灵感" />
+            </SectionCard>
 
             <View style={styles.sectionHeader}>
-              <ThemedText style={styles.sectionTitle}>最近灵感</ThemedText>
-              <ThemedText style={[styles.countText, { color: mutedText }]}>{inspirations.length} 条</ThemedText>
+              <View>
+                <ThemedText style={styles.sectionTitle}>最近灵感</ThemedText>
+                <ThemedText style={[styles.sectionSub, { color: palette.muted }]}>一张张纸片，慢慢会变成地图。</ThemedText>
+              </View>
+              <ThemedText style={[styles.countText, { color: palette.muted }]}>{inspirations.length} 条</ThemedText>
             </View>
           </View>
         }
         ListEmptyComponent={
-          <View style={[styles.emptyCard, { backgroundColor: cardBg, borderColor: cardBorder }]}>
-            <ThemedText style={[styles.emptyText, { color: mutedText }]}>还没有灵感碎片。</ThemedText>
-          </View>
+          <SectionCard style={styles.emptyCard}>
+            <ThemedText style={[styles.emptyMark, { color: palette.accentStrong }]}>✦</ThemedText>
+            <ThemedText style={[styles.emptyText, { color: palette.muted }]}>还没有灵感碎片。第一条不用写得漂亮，像把一片叶子夹进书里就好。</ThemedText>
+          </SectionCard>
         }
-        renderItem={({ item }) => (
+        renderItem={({ item, index }) => (
           <Pressable
             onPress={() => router.push({ pathname: '/(tabs)/lab/fragments/[id]', params: { id: item.id } })}
-            style={({ pressed }) => [
-              styles.card,
-              { backgroundColor: cardBg, borderColor: cardBorder, opacity: pressed ? 0.92 : 1 },
-            ]}>
-            <View style={styles.cardBody}>
-              <ThemedText style={styles.cardContent}>{item.content}</ThemedText>
-              <ThemedText style={[styles.cardTime, { color: mutedText }]}>{formatCreatedAt(item.createdAt)}</ThemedText>
-            </View>
-            <Pressable
-              onPress={() => confirmDelete(item)}
-              style={({ pressed }) => [styles.deleteBtn, { borderColor: cardBorder, opacity: pressed ? 0.75 : 1 }]}>
-              <ThemedText style={styles.deleteText}>删除</ThemedText>
-            </Pressable>
+            style={({ pressed }) => [{ opacity: pressed ? 0.92 : 1 }]}>
+            <SectionCard elevated style={[styles.recordCard, index % 2 === 0 ? styles.paperTiltA : styles.paperTiltB]}>
+              <View style={[styles.paperStripe, { backgroundColor: palette.accentSoft }]} />
+              <View style={styles.cardBody}>
+                <ThemedText style={styles.cardContent}>{item.content}</ThemedText>
+                <View style={styles.cardFooter}>
+                  <ThemedText style={[styles.cardTime, { color: palette.muted }]}>{formatCreatedAt(item.createdAt)}</ThemedText>
+                  <ThemedText style={[styles.spark, { color: palette.accentStrong }]}>✦</ThemedText>
+                </View>
+              </View>
+              <AppButton variant="ghost" title="删除" onPress={() => confirmDelete(item)} textStyle={{ color: palette.danger }} style={styles.deleteBtn} />
+            </SectionCard>
           </Pressable>
         )}
       />
-    </ThemedView>
+    </ScreenScaffold>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, paddingHorizontal: 18, paddingTop: 18 },
-  header: { paddingTop: 4, paddingBottom: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  bigTitle: { fontSize: 26, fontWeight: '900', letterSpacing: 0, textAlign: 'center' },
-  backText: { fontSize: 13, lineHeight: 16, fontWeight: '900', width: 40 },
-  listContent: { paddingTop: 2 },
-  topContent: { gap: 12, paddingBottom: 12 },
-  inputCard: { borderWidth: 1, borderRadius: 18, padding: 12, gap: 12 },
-  input: { minHeight: 100, fontSize: 16, lineHeight: 22, fontWeight: '700' },
-  primaryBtn: { borderRadius: 16, paddingVertical: 13, alignItems: 'center' },
-  primaryText: { color: '#1D1B1E', fontSize: 15, lineHeight: 18, fontWeight: '900' },
-  sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  sectionTitle: { fontSize: 18, lineHeight: 24, fontWeight: '900' },
-  countText: { fontSize: 13, lineHeight: 18, fontWeight: '800' },
-  emptyCard: { borderWidth: 1, borderRadius: 18, padding: 14 },
-  emptyText: { fontSize: 13, lineHeight: 18, fontWeight: '800' },
-  card: { borderWidth: 1, borderRadius: 18, padding: 14, flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
-  cardBody: { flex: 1, gap: 8 },
-  cardContent: { fontSize: 16, lineHeight: 22, fontWeight: '800' },
-  cardTime: { fontSize: 12, lineHeight: 16, fontWeight: '800' },
-  deleteBtn: { borderWidth: 1, borderRadius: 14, paddingHorizontal: 10, paddingVertical: 8 },
-  deleteText: { color: '#D96C6C', fontSize: 13, lineHeight: 16, fontWeight: '900' },
+  header: { paddingTop: uiTokens.layout.headerPaddingTop, paddingBottom: uiTokens.spacing.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  titleWrap: { alignItems: 'center', gap: 2 },
+  kicker: { ...uiTokens.typography.meta, letterSpacing: 1.1 },
+  bigTitle: uiTokens.typography.pageTitle,
+  backText: { ...uiTokens.typography.chip, width: 40 },
+  listContent: { paddingTop: 2, paddingBottom: 150 },
+  topContent: { gap: uiTokens.spacing.md, paddingBottom: uiTokens.spacing.md },
+  noteInputCard: { paddingTop: 20, overflow: 'hidden' },
+  tape: { position: 'absolute', top: 0, alignSelf: 'center', width: 86, height: 12, borderBottomLeftRadius: 10, borderBottomRightRadius: 10 },
+  noteHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  noteChip: { paddingVertical: 6 },
+  sectionHeader: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: uiTokens.spacing.md },
+  sectionTitle: uiTokens.typography.sectionTitle,
+  sectionSub: { fontSize: 12, lineHeight: 17, fontWeight: '800' },
+  countText: { fontSize: 13, lineHeight: 18, fontWeight: '900' },
+  input: { minHeight: 124, borderWidth: 1, borderRadius: uiTokens.radius.md, padding: uiTokens.spacing.md, fontSize: 16, lineHeight: 23, fontWeight: '700' },
+  emptyCard: { alignItems: 'center', gap: uiTokens.spacing.sm },
+  emptyMark: { fontSize: 24, lineHeight: 28, fontWeight: '900' },
+  emptyText: { fontSize: 13, lineHeight: 19, fontWeight: '800', textAlign: 'center' },
+  recordCard: { flexDirection: 'row', gap: uiTokens.spacing.md, alignItems: 'flex-start', paddingLeft: 18, overflow: 'hidden' },
+  paperTiltA: { transform: [{ rotate: '-0.3deg' }] },
+  paperTiltB: { transform: [{ rotate: '0.25deg' }] },
+  paperStripe: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 5 },
+  cardBody: { flex: 1, gap: uiTokens.spacing.sm },
+  cardContent: { fontSize: 16, lineHeight: 23, fontWeight: '800' },
+  cardFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  cardTime: uiTokens.typography.meta,
+  spark: { fontSize: 14, lineHeight: 16, fontWeight: '900' },
+  deleteBtn: { minHeight: 34, paddingHorizontal: uiTokens.spacing.sm, paddingVertical: 6, borderWidth: 0 },
 });
