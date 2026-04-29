@@ -65,12 +65,8 @@ export default function GamePlayScreen() {
         </View>
       ) : event ? (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.body}>
-          <View style={[styles.metaRow, { backgroundColor: cardBg, borderColor: cardBorder }]}>
-            <ThemedText style={[styles.metaText, { color: mutedText }]}>
-              地点：{player.location ?? '未设置'} · 状态：{Object.entries(player.attrs)
-                .map(([k, v]) => `${k}:${v}`)
-                .join('  ')}
-            </ThemedText>
+          <View style={[styles.locationRow, { borderColor: cardBorder, backgroundColor: cardBg }]}>
+            <ThemedText style={[styles.locationText, { color: mutedText }]}>地点：{player.location ?? '未设置'}</ThemedText>
           </View>
 
           <EventRenderer
@@ -116,7 +112,7 @@ const styles = StyleSheet.create({
   chip: { borderWidth: 1, borderRadius: 14, paddingVertical: 12, paddingHorizontal: 12 },
   chipText: { fontSize: 14, lineHeight: 18, fontWeight: '900' },
   errorText: { fontSize: 12, lineHeight: 16, fontWeight: '700', paddingVertical: 2 },
-  metaRow: { borderWidth: 1, borderRadius: 14, paddingVertical: 10, paddingHorizontal: 12 },
-  metaText: { fontSize: 12, lineHeight: 16, fontWeight: '800' },
+  locationRow: { borderWidth: 1, borderRadius: 14, paddingVertical: 8, paddingHorizontal: 12 },
+  locationText: { fontSize: 12, lineHeight: 16, fontWeight: '800' },
   slotRow: { flexDirection: 'row', gap: 10, flexWrap: 'wrap' },
 });
