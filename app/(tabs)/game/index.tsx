@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, Animated, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -38,6 +38,20 @@ export default function GameHomeScreen() {
       useNativeDriver: true,
     }).start();
   }, [sideDockOpen, slideAnim]);
+
+  function confirmResetGame() {
+    Alert.alert('开始新旅程？', '这会重置当前游戏进度和属性，但不会影响现实任务记录。', [
+      { text: '取消', style: 'cancel' },
+      {
+        text: '确认开始',
+        style: 'destructive',
+        onPress: () => {
+          useGameStore.getState().resetGame();
+          router.push('/(tabs)/game/map');
+        },
+      },
+    ]);
+  }
 
   return (
     <ThemedView style={[styles.screen, { backgroundColor: pageBg }]}>
@@ -101,10 +115,7 @@ export default function GameHomeScreen() {
               <ThemedText style={styles.primaryBtnText}>进入地图</ThemedText>
             </Pressable>
             <Pressable
-              onPress={() => {
-                useGameStore.getState().resetGame();
-                router.push('/(tabs)/game/map');
-              }}
+              onPress={confirmResetGame}
               style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1 }]}>
               <ThemedText style={[styles.linkText, { color: mutedText }]}>开始新旅程</ThemedText>
             </Pressable>

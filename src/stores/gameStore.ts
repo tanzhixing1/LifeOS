@@ -4,6 +4,21 @@ import { persist } from 'zustand/middleware';
 import type { PlayerState } from '@/features/game/engine/types';
 import { zustandStorage } from '@/services/storage/zustandStorage';
 
+export const DEFAULT_ATTRS = {
+  mana: 100,
+  hp: 100,
+  sanity: 100,
+  stamina: 0,
+  focus: 0,
+  charisma: 0,
+  intelligence: 0,
+  proficiency: 0,
+  family: 0,
+  friendship: 0,
+} as const;
+
+const DEFAULT_LOCATION = 'room';
+
 export type SaveSlot = {
   id: string;
   savedAt: number;
@@ -46,13 +61,36 @@ export type GameActions = {
 
 export type GameStore = GameState & GameActions;
 
+function normalizeAttrs(attrs?: Partial<Record<string, number>> | null): Record<string, number> {
+  const normalized: Record<string, number> = { ...DEFAULT_ATTRS };
+  if (!attrs || typeof attrs !== 'object') return normalized;
+
+  for (const [key, value] of Object.entries(attrs)) {
+    if (typeof value === 'number' && Number.isFinite(value)) normalized[key] = value;
+  }
+
+  return normalized;
+}
+
+function normalizePlayer(player?: Partial<PlayerState> | null): PlayerState {
+  return {
+    attrs: normalizeAttrs(player?.attrs),
+    flags: player?.flags && typeof player.flags === 'object' ? { ...player.flags } : {},
+    location: typeof player?.location === 'string' ? player.location : DEFAULT_LOCATION,
+  };
+}
+
+function normalizeSaveSlot(slot: SaveSlot | null | undefined): SaveSlot | null {
+  if (!slot) return null;
+  return {
+    ...slot,
+    player: normalizePlayer(slot.player),
+  };
+}
+
 function defaultState(): GameState {
   return {
-    player: {
-      attrs: { mana: 100, hp: 100, sanity: 100, stamina: 0, focus: 0, charisma: 0, intelligence: 0 },
-      flags: {},
-      location: 'room',
-    },
+    player: normalizePlayer(),
     eventId: 'demo_start',
     saveSlots: {
       slot1: null,
@@ -68,7 +106,7 @@ export const useGameStore = create<GameStore>()(
     (set, get) => ({
       ...defaultState(),
       setPlayer(player) {
-        set({ player });
+        set({ player: normalizePlayer(player) });
       },
       setFlag(key, value) {
         set((s) => ({ player: { ...s.player, flags: { ...s.player.flags, [key]: value } } }));
@@ -100,15 +138,19 @@ export const useGameStore = create<GameStore>()(
         const slot: SaveSlot = {
           id: slotId,
           savedAt: Date.now(),
-          player: state.player,
+          player: normalizePlayer(state.player),
           eventId: state.eventId,
         };
         set((s) => ({ saveSlots: { ...s.saveSlots, [slotId]: slot } }));
       },
       load(slotId) {
-        const slot = get().saveSlots[slotId];
+        const slot = normalizeSaveSlot(get().saveSlots[slotId]);
         if (!slot) return;
-        set({ player: slot.player, eventId: slot.eventId });
+        set((s) => ({
+          player: slot.player,
+          eventId: slot.eventId,
+          saveSlots: { ...s.saveSlots, [slotId]: slot },
+        }));
       },
       resetGame() {
         set((s) => ({ ...defaultState(), rewardLogs: s.rewardLogs }));
@@ -116,22 +158,22 @@ export const useGameStore = create<GameStore>()(
     }),
     {
       name: 'lifeos.gameStore',
-      version: 3,
+      version: 4,
       storage: zustandStorage,
       partialize: (s) => ({ player: s.player, eventId: s.eventId, saveSlots: s.saveSlots, rewardLogs: s.rewardLogs }),
       migrate: (persistedState: any) => {
         const state = persistedState && typeof persistedState === 'object' ? persistedState : {};
-        if (state?.player?.attrs) {
-          const attrs = state.player.attrs;
-          state.player.attrs = {
-            mana: typeof attrs.mana === 'number' ? attrs.mana : 100,
-            hp: typeof attrs.hp === 'number' ? attrs.hp : 100,
-            sanity: typeof attrs.sanity === 'number' ? attrs.sanity : 100,
-            ...attrs,
-          };
-        }
+
+        const saveSlots = state?.saveSlots && typeof state.saveSlots === 'object' ? state.saveSlots : {};
+
         return {
           ...state,
+          player: normalizePlayer(state.player),
+          saveSlots: {
+            slot1: normalizeSaveSlot(saveSlots.slot1),
+            slot2: normalizeSaveSlot(saveSlots.slot2),
+            slot3: normalizeSaveSlot(saveSlots.slot3),
+          },
           rewardLogs: Array.isArray(state.rewardLogs) ? state.rewardLogs : [],
         };
       },

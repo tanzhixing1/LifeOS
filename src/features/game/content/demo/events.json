@@ -34,10 +34,10 @@
       "title": "清晨的魔女小屋",
       "presentation": "visualNovel",
       "backgroundId": "room_morning",
-      "characters": [{ "id": "mentor", "name": "导师", "position": "right", "defaultExpression": "平静" }],
+      "characters": [{ "id": "mentor", "name": "莉莉丝", "position": "right", "defaultSpriteId": "mentor_neutral", "defaultExpression": "平静" }],
       "dialogue": [
-        { "speakerId": "mentor", "speakerName": "导师", "text": "你醒了。" },
-        { "speakerId": "mentor", "speakerName": "导师", "text": "今天的魔力看起来比昨天稳定一点。" },
+        { "speakerId": "mentor", "speakerName": "莉莉丝", "spriteId": "mentor_neutral", "text": "你醒了。" },
+        { "speakerId": "mentor", "speakerName": "莉莉丝", "spriteId": "mentor_neutral", "text": "今天的魔力看起来比昨天稳定一点。" },
         { "speakerId": "me", "speakerName": "我", "text": "也许是因为我终于完成了一些现实里的事情。" }
       ],
       "options": [

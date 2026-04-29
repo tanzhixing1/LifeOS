@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Image, ImageBackground, Pressable, StyleSheet, View, type ImageSourcePropType } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
+import { getGameBackground, getGameSprite } from '@/features/game/assets/gameAssetRegistry';
+import type { CharacterSprite, Choice, DialogueLine, VisualNovelEventNode } from '@/features/game/engine/types';
 import { useThemeColor } from '@/hooks/use-theme-color';
-import type { CharacterSprite, Choice, VisualNovelEventNode } from '@/features/game/engine/types';
 
 export type VisualNovelEventViewProps = {
   event: VisualNovelEventNode;
@@ -29,8 +30,8 @@ export function VisualNovelEventView({ event, choices, onSelectChoice }: VisualN
   const isChoiceStep = dialogueIndex >= event.dialogue.length;
   const currentLine = hasDialogue ? event.dialogue[Math.min(dialogueIndex, event.dialogue.length - 1)] : undefined;
   const backgroundId = currentLine?.backgroundId ?? event.backgroundId;
+  const backgroundSource = getGameBackground(backgroundId);
   const speakerLabel = currentLine?.speakerName ?? currentLine?.speakerId ?? '旁白';
-  const activeSpriteId = currentLine?.spriteId ?? currentLine?.speakerId;
   const characters = useMemo(() => event.characters ?? [], [event.characters]);
 
   function advanceDialogue() {
@@ -40,27 +41,39 @@ export function VisualNovelEventView({ event, choices, onSelectChoice }: VisualN
 
   return (
     <View style={[styles.scene, { borderColor: cardBorder }]}>
-      <View style={styles.backgroundLayer}>
-        <View style={styles.backgroundTop} />
-        <View style={styles.backgroundBottom} />
-        {backgroundId ? (
-          <ThemedText style={[styles.backgroundId, { color: mutedText }]} numberOfLines={1}>
-            {backgroundId}
-          </ThemedText>
-        ) : null}
-      </View>
+      {backgroundSource ? (
+        <ImageBackground source={backgroundSource} resizeMode="cover" style={styles.backgroundLayer} imageStyle={styles.backgroundImage}>
+          <View style={styles.backgroundOverlay} />
+        </ImageBackground>
+      ) : (
+        <View style={styles.backgroundLayer}>
+          <View style={styles.backgroundTop} />
+          <View style={styles.backgroundBottom} />
+          {backgroundId ? (
+            <ThemedText style={[styles.backgroundId, { color: mutedText }]} numberOfLines={1}>
+              {backgroundId}
+            </ThemedText>
+          ) : null}
+        </View>
+      )}
 
       <View style={styles.stage}>
-        {characters.map((character) => (
-          <CharacterPlaceholder
-            key={character.id}
-            character={character}
-            active={activeSpriteId === character.id}
-            borderColor={cardBorder}
-            textColor={textColor}
-            mutedText={mutedText}
-          />
-        ))}
+        {characters.map((character) => {
+          const spriteSource = resolveCharacterSprite(character, currentLine);
+          const isActive = currentLine?.speakerId === character.id || currentLine?.spriteId === character.defaultSpriteId;
+
+          return (
+            <CharacterActor
+              key={character.id}
+              character={character}
+              spriteSource={spriteSource}
+              active={isActive}
+              borderColor={cardBorder}
+              textColor={textColor}
+              mutedText={mutedText}
+            />
+          );
+        })}
       </View>
 
       {isChoiceStep ? (
@@ -73,7 +86,7 @@ export function VisualNovelEventView({ event, choices, onSelectChoice }: VisualN
                 styles.choiceButton,
                 {
                   borderColor: accent,
-                  backgroundColor: pressed ? 'rgba(255,255,255,0.92)' : 'rgba(255,255,255,0.82)',
+                  backgroundColor: pressed ? 'rgba(255,255,255,0.94)' : 'rgba(255,255,255,0.84)',
                 },
               ]}>
               <ThemedText style={[styles.choiceText, { color: accent }]}>{choice.text}</ThemedText>
@@ -107,14 +120,16 @@ export function VisualNovelEventView({ event, choices, onSelectChoice }: VisualN
   );
 }
 
-function CharacterPlaceholder({
+function CharacterActor({
   character,
+  spriteSource,
   active,
   borderColor,
   textColor,
   mutedText,
 }: {
   character: CharacterSprite;
+  spriteSource: ImageSourcePropType | null;
   active: boolean;
   borderColor: string;
   textColor: string;
@@ -126,24 +141,53 @@ function CharacterPlaceholder({
         styles.character,
         getCharacterPosition(character.position),
         {
-          borderColor,
           opacity: active ? 1 : 0.72,
           transform: [{ scale: character.scale ?? 1 }],
         },
       ]}>
-      <View style={[styles.avatar, { borderColor }]}>
-        <ThemedText style={[styles.avatarText, { color: active ? textColor : mutedText }]}>人</ThemedText>
-      </View>
-      <ThemedText style={[styles.characterName, { color: active ? textColor : mutedText }]} numberOfLines={1}>
-        {character.name}
-      </ThemedText>
-      {character.defaultExpression ? (
-        <ThemedText style={[styles.expression, { color: mutedText }]} numberOfLines={1}>
-          {character.defaultExpression}
+      {spriteSource ? (
+        <Image source={spriteSource} resizeMode="contain" style={styles.spriteImage} />
+      ) : (
+        <View style={[styles.avatar, { borderColor }]}>
+          <ThemedText style={[styles.avatarText, { color: active ? textColor : mutedText }]}>人</ThemedText>
+        </View>
+      )}
+
+      <View style={styles.characterCaption}>
+        <ThemedText style={[styles.characterName, { color: active ? textColor : mutedText }]} numberOfLines={1}>
+          {character.name}
         </ThemedText>
-      ) : null}
+        {character.defaultExpression ? (
+          <ThemedText style={[styles.expression, { color: mutedText }]} numberOfLines={1}>
+            {character.defaultExpression}
+          </ThemedText>
+        ) : null}
+      </View>
     </View>
   );
+}
+
+function resolveCharacterSprite(character: CharacterSprite, line?: DialogueLine): ImageSourcePropType | null {
+  if (line?.speakerId === character.id && line.spriteId) {
+    const sprite = getGameSprite(line.spriteId);
+    if (sprite) return sprite;
+  }
+
+  if (line?.speakerId === character.id && line.speakerId && line.expression) {
+    const sprite = getGameSprite(`${line.speakerId}_${line.expression}`);
+    if (sprite) return sprite;
+  }
+
+  if (character.defaultSpriteId) {
+    const sprite = getGameSprite(character.defaultSpriteId);
+    if (sprite) return sprite;
+  }
+
+  if (character.defaultExpression) {
+    return getGameSprite(`${character.id}_${character.defaultExpression}`);
+  }
+
+  return null;
 }
 
 function getCharacterPosition(position: CharacterSprite['position']) {
@@ -162,6 +206,13 @@ const styles = StyleSheet.create({
   },
   backgroundLayer: {
     ...StyleSheet.absoluteFillObject,
+  },
+  backgroundImage: {
+    borderRadius: 18,
+  },
+  backgroundOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(39, 30, 24, 0.18)',
   },
   backgroundTop: {
     flex: 1,
@@ -188,21 +239,24 @@ const styles = StyleSheet.create({
   character: {
     position: 'absolute',
     bottom: 0,
-    width: 112,
-    minHeight: 190,
+    width: 170,
+    minHeight: 278,
     alignItems: 'center',
     justifyContent: 'flex-end',
-    gap: 8,
   },
   characterLeft: {
-    left: '8%',
+    left: '2%',
   },
   characterCenter: {
     left: '50%',
-    marginLeft: -56,
+    marginLeft: -85,
   },
   characterRight: {
-    right: '8%',
+    right: '2%',
+  },
+  spriteImage: {
+    width: 170,
+    height: 248,
   },
   avatar: {
     width: 92,
@@ -218,15 +272,23 @@ const styles = StyleSheet.create({
     lineHeight: 40,
     fontWeight: '900',
   },
+  characterCaption: {
+    width: 132,
+    marginTop: 4,
+    alignItems: 'center',
+    paddingVertical: 4,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.4)',
+  },
   characterName: {
-    maxWidth: 112,
+    maxWidth: 124,
     fontSize: 13,
     lineHeight: 16,
     fontWeight: '900',
     textAlign: 'center',
   },
   expression: {
-    maxWidth: 112,
+    maxWidth: 124,
     fontSize: 10,
     lineHeight: 12,
     fontWeight: '800',

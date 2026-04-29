@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import React, { useMemo } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -32,6 +32,13 @@ export default function GamePlayScreen() {
 
   const event = eventsById.get(eventId) ?? eventsById.get(pack.startEventId);
   const choices = useMemo(() => (event ? getAvailableChoices(event, player) : []), [event, player]);
+
+  function confirmLoadSlot(slotId: string) {
+    Alert.alert('读取存档？', '这会用存档覆盖当前游戏状态。', [
+      { text: '取消', style: 'cancel' },
+      { text: '读取', onPress: () => load(slotId) },
+    ]);
+  }
 
   return (
     <ThemedView style={[styles.screen, { backgroundColor: pageBg }]}>
@@ -85,7 +92,7 @@ export default function GamePlayScreen() {
                 <ThemedText style={[styles.chipText, { color: accent }]}>保存 1</ThemedText>
               </Pressable>
               <Pressable
-                onPress={() => load('slot1')}
+                onPress={() => confirmLoadSlot('slot1')}
                 style={({ pressed }) => [styles.chip, { borderColor: accent, opacity: pressed ? 0.92 : 1 }]}>
                 <ThemedText style={[styles.chipText, { color: accent }]}>读取 1</ThemedText>
               </Pressable>

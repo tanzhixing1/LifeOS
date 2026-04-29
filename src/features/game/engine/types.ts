@@ -50,6 +50,7 @@ export type DialogueLine = {
 export type CharacterSprite = {
   id: string;
   name: string;
+  defaultSpriteId?: string;
   defaultExpression?: string;
   position?: 'left' | 'center' | 'right';
   scale?: number;
