@@ -11,6 +11,21 @@ export type Condition =
   | { type: 'attr'; key: string; op?: ConditionOp; value?: number }
   | { type: 'once'; key: string };
 
+export type GameLocation = {
+  id: string;
+  name: string;
+  subtitle?: string;
+  description: string;
+  icon?: string;
+  backgroundId?: string;
+  entryEventId: string;
+  tags?: string[];
+  unlockRequirements?: Condition[];
+  npcIds?: string[];
+  shopId?: string;
+  randomEventIds?: string[];
+};
+
 export type Effect =
   | { type: 'setFlag'; key: string; value: boolean }
   | { type: 'addAttr'; key: string; value: number }

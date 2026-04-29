@@ -4,8 +4,10 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import type { ContentPack, EventNode, MapNode } from '@/features/game/engine/types';
 import demoPackJson from '@/features/game/content/demo/events.json';
+import { demoLocations } from '@/features/game/content/demo/locations';
+import { evaluateCondition } from '@/features/game/engine/executor';
+import type { ContentPack, EventNode, GameLocation, PlayerState } from '@/features/game/engine/types';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { useGameStore } from '@/stores';
 
@@ -17,23 +19,17 @@ export default function GameMapScreen() {
   const accent = useThemeColor({ light: '#D1BBDE', dark: '#D1BBDE' }, 'tint');
 
   const pack = demoPackJson as ContentPack;
-  const nodes = (pack.map ?? []) as MapNode[];
   const eventsById = useMemo(() => new Map<string, EventNode>(pack.events.map((e) => [e.id, e])), [pack.events]);
 
+  const player = useGameStore((s) => s.player);
   const setLocation = useGameStore((s) => s.setLocation);
   const gotoEvent = useGameStore((s) => s.gotoEvent);
+  const locations = useMemo(() => getAvailableLocations(demoLocations, player), [player]);
 
-  function locationToEvent(locationId: string): string {
-    if (locationId === 'street') return 'demo_street';
-    if (locationId === 'market') return 'demo_market';
-    if (locationId === 'room') return 'demo_room';
-    return pack.startEventId;
-  }
-
-  function enterLocation(locationId: string) {
-    setLocation(locationId);
-    const nextEventId = locationToEvent(locationId);
-    gotoEvent(eventsById.has(nextEventId) ? nextEventId : pack.startEventId);
+  function enterLocation(location: GameLocation) {
+    setLocation(location.id);
+    const nextEventId = eventsById.has(location.entryEventId) ? location.entryEventId : pack.startEventId;
+    gotoEvent(nextEventId);
     router.push('/(tabs)/game/play');
   }
 
@@ -57,15 +53,19 @@ export default function GameMapScreen() {
       <View style={[styles.card, { backgroundColor: cardBg, borderColor: cardBorder }]}>
         <ThemedText style={styles.cardTitle}>地点</ThemedText>
         <View style={styles.nodeGrid}>
-          {nodes.map((n) => (
+          {locations.map((location) => (
             <Pressable
-              key={n.id}
-              onPress={() => enterLocation(n.id)}
+              key={location.id}
+              onPress={() => enterLocation(location)}
               style={({ pressed }) => [
                 styles.nodeBtn,
                 { borderColor: accent, opacity: pressed ? 0.92 : 1 },
               ]}>
-              <ThemedText style={[styles.nodeText, { color: accent }]}>{n.name}</ThemedText>
+              <ThemedText style={styles.nodeIcon}>{location.icon ?? '✦'}</ThemedText>
+              <ThemedText style={[styles.nodeText, { color: accent }]}>{location.name}</ThemedText>
+              <ThemedText style={[styles.nodeSub, { color: mutedText }]} numberOfLines={1}>
+                {location.subtitle ?? location.description}
+              </ThemedText>
             </Pressable>
           ))}
         </View>
@@ -88,7 +88,17 @@ const styles = StyleSheet.create({
   card: { borderWidth: 1, borderRadius: 18, padding: 14, gap: 12, marginTop: 12 },
   cardTitle: { fontSize: 16, lineHeight: 20, fontWeight: '900' },
   nodeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  nodeBtn: { borderWidth: 1.5, borderRadius: 14, paddingVertical: 12, paddingHorizontal: 12 },
+  nodeBtn: { width: '48%', borderWidth: 1.5, borderRadius: 14, paddingVertical: 12, paddingHorizontal: 12, gap: 4 },
+  nodeIcon: { fontSize: 20, lineHeight: 24 },
   nodeText: { fontSize: 14, lineHeight: 18, fontWeight: '900' },
+  nodeSub: { fontSize: 11, lineHeight: 15, fontWeight: '800' },
 });
 
+function getAvailableLocations(locations: GameLocation[], player: PlayerState): GameLocation[] {
+  return locations.filter((location) => isLocationUnlocked(location, player));
+}
+
+function isLocationUnlocked(location: GameLocation, player: PlayerState): boolean {
+  if (!location.unlockRequirements || location.unlockRequirements.length === 0) return true;
+  return location.unlockRequirements.every((condition) => evaluateCondition(condition, player));
+}
