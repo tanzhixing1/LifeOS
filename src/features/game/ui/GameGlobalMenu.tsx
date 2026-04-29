@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, Animated, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
@@ -8,7 +8,7 @@ import { formatGameTime } from '@/features/game/engine/time';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { useGameStore } from '@/stores';
 
-const SIDE_DOCK_PANEL_WIDTH = 84;
+const SIDE_DOCK_PANEL_WIDTH = 92;
 const SIDE_DOCK_HANDLE_WIDTH = 30;
 
 const ATTRIBUTE_ROWS = [
@@ -24,6 +24,12 @@ const ATTRIBUTE_ROWS = [
   { key: 'friendship', label: '友情' },
 ] as const;
 
+const SAVE_SLOTS = [
+  { id: 'slot1', label: '存档 1' },
+  { id: 'slot2', label: '存档 2' },
+  { id: 'slot3', label: '存档 3' },
+] as const;
+
 export function GameGlobalMenu() {
   const insets = useSafeAreaInsets();
   const slideAnim = useRef(new Animated.Value(0)).current;
@@ -32,9 +38,14 @@ export function GameGlobalMenu() {
   const mutedText = useThemeColor({ light: '#7A756F', dark: '#A7B0BE' }, 'text');
   const accent = useThemeColor({ light: '#D1BBDE', dark: '#D1BBDE' }, 'tint');
   const [attrsVisible, setAttrsVisible] = useState(false);
+  const [saveVisible, setSaveVisible] = useState(false);
   const [sideDockOpen, setSideDockOpen] = useState(false);
 
   const player = useGameStore((s) => s.player);
+  const saveSlots = useGameStore((s) => s.saveSlots);
+  const save = useGameStore((s) => s.save);
+  const load = useGameStore((s) => s.load);
+
   const attrRows = ATTRIBUTE_ROWS.map((row) => ({ ...row, value: player.attrs[row.key] ?? 0 }));
   const lifeRows = [
     { key: 'bodyStatus', label: '身体状态', value: player.vitals.bodyStatus },
@@ -52,14 +63,25 @@ export function GameGlobalMenu() {
     }).start();
   }, [sideDockOpen, slideAnim]);
 
+  function confirmLoad(slotId: string) {
+    setSaveVisible(false);
+    Alert.alert('读取存档', '这会用存档覆盖当前游戏状态。', [
+      { text: '取消', style: 'cancel' },
+      {
+        text: '读取',
+        onPress: () => load(slotId),
+      },
+    ]);
+  }
+
   return (
     <>
-      {sideDockOpen ? <Pressable style={styles.sideDockBackdrop} onPress={() => setSideDockOpen(false)} /> : null}
+      {sideDockOpen ? <Pressable style={styles.backdrop} onPress={() => setSideDockOpen(false)} /> : null}
 
       <Animated.View
         pointerEvents="box-none"
         style={[
-          styles.sideDockGroup,
+          styles.group,
           {
             top: Math.max(104, insets.top + 56),
             transform: [
@@ -74,7 +96,7 @@ export function GameGlobalMenu() {
         ]}>
         <View
           style={[
-            styles.sideDockPanel,
+            styles.panel,
             {
               backgroundColor: '#FDFBF7',
               borderColor: accent,
@@ -87,11 +109,24 @@ export function GameGlobalMenu() {
               setAttrsVisible(true);
             }}
             style={({ pressed }) => [
-              styles.sideDockButton,
+              styles.button,
               { borderColor: cardBorder, backgroundColor: pressed ? 'rgba(209,187,222,0.22)' : 'rgba(209,187,222,0.10)' },
             ]}>
-            <ThemedText style={styles.sideDockIcon}>✦</ThemedText>
-            <ThemedText style={[styles.sideDockLabel, { color: mutedText }]}>属性</ThemedText>
+            <ThemedText style={styles.buttonIcon}>✦</ThemedText>
+            <ThemedText style={[styles.buttonLabel, { color: mutedText }]}>属性</ThemedText>
+          </Pressable>
+
+          <Pressable
+            onPress={() => {
+              setSideDockOpen(false);
+              setSaveVisible(true);
+            }}
+            style={({ pressed }) => [
+              styles.button,
+              { borderColor: cardBorder, backgroundColor: pressed ? 'rgba(209,187,222,0.22)' : 'rgba(209,187,222,0.10)' },
+            ]}>
+            <ThemedText style={styles.buttonIcon}>💾</ThemedText>
+            <ThemedText style={[styles.buttonLabel, { color: mutedText }]}>存档</ThemedText>
           </Pressable>
 
           <Pressable
@@ -100,40 +135,47 @@ export function GameGlobalMenu() {
               router.push('/(tabs)/game/witch-log');
             }}
             style={({ pressed }) => [
-              styles.sideDockButton,
+              styles.button,
               { borderColor: cardBorder, backgroundColor: pressed ? 'rgba(209,187,222,0.22)' : 'rgba(209,187,222,0.10)' },
             ]}>
-            <ThemedText style={styles.sideDockIcon}>📝</ThemedText>
-            <ThemedText style={[styles.sideDockLabel, { color: mutedText }]}>日志</ThemedText>
+            <ThemedText style={styles.buttonIcon}>📜</ThemedText>
+            <ThemedText style={[styles.buttonLabel, { color: mutedText }]}>日志</ThemedText>
           </Pressable>
         </View>
 
         <Pressable
           onPress={() => setSideDockOpen((open) => !open)}
           style={({ pressed }) => [
-            styles.sideDockHandle,
+            styles.handle,
             {
               backgroundColor: '#FDFBF7',
               borderColor: accent,
               opacity: pressed ? 0.84 : 1,
             },
           ]}>
-          <ThemedText style={[styles.sideDockHandleText, { color: accent }]}>{sideDockOpen ? '<' : '>'}</ThemedText>
+          <ThemedText style={[styles.handleText, { color: accent }]}>{sideDockOpen ? '<' : '>'}</ThemedText>
         </Pressable>
       </Animated.View>
 
       <Modal visible={attrsVisible} transparent animationType="fade" onRequestClose={() => setAttrsVisible(false)}>
-        <Pressable style={styles.modalMask} onPress={() => setAttrsVisible(false)}>
-          <Pressable style={[styles.attrPanel, { backgroundColor: cardBg, borderColor: cardBorder }]} onPress={() => {}}>
-            <View style={styles.panelOrnamentRow}>
-              <View style={[styles.panelLine, { backgroundColor: cardBorder }]} />
-              <ThemedText style={[styles.panelKicker, { color: accent }]}>STATUS NOTE</ThemedText>
-              <View style={[styles.panelLine, { backgroundColor: cardBorder }]} />
+        <View style={styles.modalRoot}>
+          <Pressable style={styles.modalBackdrop} onPress={() => setAttrsVisible(false)} />
+          <View style={[styles.modalPanel, { backgroundColor: cardBg, borderColor: cardBorder }]}>
+            <View style={styles.ruleRow}>
+              <View style={[styles.ruleLine, { backgroundColor: cardBorder }]} />
+              <ThemedText style={[styles.kicker, { color: accent }]}>STATUS NOTE</ThemedText>
+              <View style={[styles.ruleLine, { backgroundColor: cardBorder }]} />
             </View>
-            <ThemedText style={styles.panelTitle}>魔女状态手账</ThemedText>
-            <ThemedText style={[styles.panelSubtitle, { color: mutedText }]}>长期能力和短期生活状态分开看，会更清楚。</ThemedText>
 
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.panelContent}>
+            <ThemedText style={styles.title}>魔女状态手账</ThemedText>
+            <ThemedText style={[styles.subtitle, { color: mutedText }]}>长期能力和短期生活状态分开看，会更清楚。</ThemedText>
+
+            <ScrollView
+              style={styles.modalBody}
+              nestedScrollEnabled
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              contentContainerStyle={styles.content}>
               <View style={styles.section}>
                 <ThemedText style={[styles.sectionTitle, { color: accent }]}>魔女属性</ThemedText>
                 <View style={styles.attrGrid}>
@@ -160,24 +202,102 @@ export function GameGlobalMenu() {
               </View>
             </ScrollView>
 
-            <Pressable
-              onPress={() => setAttrsVisible(false)}
-              style={({ pressed }) => [
-                styles.closeBtn,
-                { borderColor: accent, backgroundColor: accent, opacity: pressed ? 0.9 : 1 },
-              ]}>
-              <ThemedText style={styles.closeBtnText}>合上手账</ThemedText>
-            </Pressable>
-          </Pressable>
-        </Pressable>
+            <View style={styles.modalFooter}>
+              <Pressable
+                onPress={() => setAttrsVisible(false)}
+                style={({ pressed }) => [
+                  styles.closeBtn,
+                  { borderColor: accent, backgroundColor: accent, opacity: pressed ? 0.9 : 1 },
+                ]}>
+                <ThemedText style={styles.closeBtnText}>合上手账</ThemedText>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={saveVisible} transparent animationType="fade" onRequestClose={() => setSaveVisible(false)}>
+        <View style={styles.modalRoot}>
+          <Pressable style={styles.modalBackdrop} onPress={() => setSaveVisible(false)} />
+          <View style={[styles.modalPanel, { backgroundColor: cardBg, borderColor: cardBorder }]}>
+            <View style={styles.ruleRow}>
+              <View style={[styles.ruleLine, { backgroundColor: cardBorder }]} />
+              <ThemedText style={[styles.kicker, { color: accent }]}>SAVE FILE</ThemedText>
+              <View style={[styles.ruleLine, { backgroundColor: cardBorder }]} />
+            </View>
+
+            <ThemedText style={styles.title}>存档</ThemedText>
+            <ThemedText style={[styles.subtitle, { color: mutedText }]}>保存或读取当前游戏进度。</ThemedText>
+
+            <ScrollView
+              style={styles.modalBody}
+              nestedScrollEnabled
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              contentContainerStyle={styles.content}>
+              {SAVE_SLOTS.map((slot) => {
+                const currentSlot = saveSlots[slot.id];
+                const hasSave = Boolean(currentSlot);
+
+                return (
+                  <View key={slot.id} style={[styles.slotRow, { borderColor: cardBorder, backgroundColor: 'rgba(255,255,255,0.24)' }]}>
+                    <View style={styles.slotMeta}>
+                      <ThemedText style={styles.slotLabel}>{slot.label}</ThemedText>
+                      <ThemedText style={[styles.slotStatus, { color: mutedText }]}>{hasSave ? '已存档' : '空槽'}</ThemedText>
+                    </View>
+
+                    <View style={styles.slotActions}>
+                      <Pressable
+                        onPress={() => {
+                          save(slot.id);
+                          setSaveVisible(false);
+                        }}
+                        style={({ pressed }) => [
+                          styles.slotButton,
+                          { borderColor: accent, backgroundColor: pressed ? 'rgba(209,187,222,0.20)' : 'rgba(209,187,222,0.12)' },
+                        ]}>
+                        <ThemedText style={[styles.slotButtonText, { color: accent }]}>保存</ThemedText>
+                      </Pressable>
+
+                      <Pressable
+                        disabled={!hasSave}
+                        onPress={() => confirmLoad(slot.id)}
+                        style={({ pressed }) => [
+                          styles.slotButton,
+                          {
+                            borderColor: hasSave ? accent : cardBorder,
+                            backgroundColor: hasSave ? (pressed ? 'rgba(209,187,222,0.20)' : 'rgba(209,187,222,0.12)') : 'rgba(122,117,111,0.08)',
+                            opacity: hasSave ? (pressed ? 0.92 : 1) : 0.56,
+                          },
+                        ]}>
+                        <ThemedText style={[styles.slotButtonText, { color: hasSave ? accent : mutedText }]}>读取</ThemedText>
+                      </Pressable>
+                    </View>
+                  </View>
+                );
+              })}
+            </ScrollView>
+
+            <View style={styles.modalFooter}>
+              <Pressable
+                onPress={() => setSaveVisible(false)}
+                style={({ pressed }) => [
+                  styles.closeBtn,
+                  { borderColor: accent, backgroundColor: accent, opacity: pressed ? 0.9 : 1 },
+                ]}>
+                <ThemedText style={styles.closeBtnText}>合上存档</ThemedText>
+              </Pressable>
+            </View>
+          </View>
+        </View>
       </Modal>
     </>
   );
 }
 
 const styles = StyleSheet.create({
-  sideDockBackdrop: { ...StyleSheet.absoluteFillObject, zIndex: 40 },
-  sideDockGroup: {
+  backdrop: { ...StyleSheet.absoluteFillObject, zIndex: 40 },
+  group: {
     position: 'absolute',
     left: 0,
     width: SIDE_DOCK_PANEL_WIDTH + SIDE_DOCK_HANDLE_WIDTH,
@@ -186,7 +306,7 @@ const styles = StyleSheet.create({
     zIndex: 50,
     elevation: 12,
   },
-  sideDockPanel: {
+  panel: {
     width: SIDE_DOCK_PANEL_WIDTH,
     borderWidth: 1,
     borderTopRightRadius: 18,
@@ -200,8 +320,8 @@ const styles = StyleSheet.create({
     shadowRadius: 18,
     elevation: 12,
   },
-  sideDockButton: {
-    minHeight: 58,
+  button: {
+    minHeight: 52,
     borderWidth: 1,
     borderRadius: 14,
     alignItems: 'center',
@@ -210,9 +330,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
     gap: 4,
   },
-  sideDockIcon: { fontSize: 18, lineHeight: 20 },
-  sideDockLabel: { fontSize: 11, lineHeight: 14, fontWeight: '900' },
-  sideDockHandle: {
+  buttonIcon: { fontSize: 17, lineHeight: 19 },
+  buttonLabel: { fontSize: 11, lineHeight: 14, fontWeight: '900' },
+  handle: {
     width: SIDE_DOCK_HANDLE_WIDTH,
     height: 48,
     marginTop: 8,
@@ -229,15 +349,27 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 14,
   },
-  sideDockHandleText: { fontSize: 18, lineHeight: 20, fontWeight: '900' },
-  modalMask: { flex: 1, backgroundColor: 'rgba(0,0,0,0.38)', alignItems: 'center', justifyContent: 'center', padding: 18 },
-  attrPanel: { width: '100%', maxHeight: '82%', borderWidth: 1.5, borderRadius: 20, padding: 14, gap: 10 },
-  panelOrnamentRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  panelLine: { flex: 1, height: 1 },
-  panelKicker: { fontSize: 10, lineHeight: 12, fontWeight: '900', letterSpacing: 1.2 },
-  panelTitle: { fontSize: 19, lineHeight: 24, fontWeight: '900', textAlign: 'center' },
-  panelSubtitle: { fontSize: 12, lineHeight: 16, fontWeight: '800', textAlign: 'center' },
-  panelContent: { gap: 14, paddingVertical: 4 },
+  handleText: { fontSize: 18, lineHeight: 20, fontWeight: '900' },
+  modalRoot: { flex: 1, padding: 18, alignItems: 'center', justifyContent: 'center' },
+  modalBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.38)', zIndex: 0 },
+  modalPanel: {
+    width: '100%',
+    height: '82%',
+    borderWidth: 1.5,
+    borderRadius: 20,
+    padding: 14,
+    gap: 10,
+    overflow: 'hidden',
+    zIndex: 1,
+  },
+  modalBody: { flex: 1 },
+  modalFooter: { paddingTop: 2 },
+  ruleRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  ruleLine: { flex: 1, height: 1 },
+  kicker: { fontSize: 10, lineHeight: 12, fontWeight: '900', letterSpacing: 1.2 },
+  title: { fontSize: 19, lineHeight: 24, fontWeight: '900', textAlign: 'center' },
+  subtitle: { fontSize: 12, lineHeight: 16, fontWeight: '800', textAlign: 'center' },
+  content: { gap: 14, paddingVertical: 4, paddingBottom: 18 },
   section: { gap: 10 },
   sectionTitle: { fontSize: 13, lineHeight: 16, fontWeight: '900' },
   attrGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
@@ -258,6 +390,27 @@ const styles = StyleSheet.create({
   },
   lifeLabel: { fontSize: 12, lineHeight: 15, fontWeight: '900' },
   lifeValue: { flex: 1, fontSize: 13, lineHeight: 17, fontWeight: '900', textAlign: 'right' },
-  closeBtn: { height: 42, borderWidth: 1.5, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginTop: 2 },
+  slotRow: {
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    gap: 10,
+  },
+  slotMeta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
+  slotLabel: { fontSize: 13, lineHeight: 16, fontWeight: '900' },
+  slotStatus: { fontSize: 11, lineHeight: 14, fontWeight: '800' },
+  slotActions: { flexDirection: 'row', gap: 8 },
+  slotButton: {
+    flex: 1,
+    minHeight: 38,
+    borderWidth: 1,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 10,
+  },
+  slotButtonText: { fontSize: 13, lineHeight: 16, fontWeight: '900' },
+  closeBtn: { height: 42, borderWidth: 1.5, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   closeBtnText: { color: '#fff', fontSize: 14, lineHeight: 18, fontWeight: '900' },
 });

@@ -1,3 +1,4 @@
+import { addMinutesToGameTime, normalizeGameTime } from './time';
 import type { Choice, Condition, ConditionOp, Effect, EventNode, PlayerState } from './types';
 
 function compare(op: ConditionOp, left: number, right: number): boolean {
@@ -38,21 +39,83 @@ export function applyEffect(effect: Effect, player: PlayerState): { player: Play
     return { player: { ...player, flags: { ...player.flags, [effect.key]: effect.value } } };
   }
 
-  const current = player.attrs[effect.key] ?? 0;
-  const nextAttrs = { ...player.attrs, [effect.key]: current + effect.value };
-  return { player: { ...player, attrs: nextAttrs } };
+  if (effect.type === 'addAttr') {
+    const current = player.attrs[effect.key] ?? 0;
+    const nextAttrs = { ...player.attrs, [effect.key]: current + effect.value };
+    return { player: { ...player, attrs: nextAttrs } };
+  }
+
+  if (effect.type === 'advanceTime') {
+    return {
+      player: {
+        ...player,
+        gameTime: addMinutesToGameTime(player.gameTime, effect.minutes),
+      },
+    };
+  }
+
+  if (effect.type === 'vitalsDelta') {
+    const nextVitals = { ...player.vitals };
+    for (const [key, value] of Object.entries(effect.deltas)) {
+      if (typeof value !== 'number' || !Number.isFinite(value)) continue;
+      if (key === 'bodyStatus') {
+        nextVitals.bodyStatus = clamp(nextVitals.bodyStatus + value, 0, 100);
+      } else if (key === 'fatigue') {
+        nextVitals.fatigue = Math.max(0, nextVitals.fatigue + value);
+      } else if (key === 'intoxication') {
+        nextVitals.intoxication = Math.max(0, nextVitals.intoxication + value);
+      }
+    }
+    return { player: { ...player, vitals: nextVitals } };
+  }
+
+  if (effect.type === 'walletDelta') {
+    return {
+      player: {
+        ...player,
+        wallet: {
+          money: Math.max(0, (player.wallet.money ?? 0) + effect.money),
+        },
+      },
+    };
+  }
+
+  if (effect.type === 'sleepToNextDay') {
+    const safeTime = normalizeGameTime(player.gameTime);
+    return {
+      player: {
+        ...player,
+        location: 'home',
+        gameTime: {
+          day: safeTime.day + 1,
+          hour: 7,
+          minute: 0,
+        },
+        vitals: {
+          ...player.vitals,
+          bodyStatus: 100,
+          fatigue: 0,
+          intoxication: 0,
+        },
+      },
+    };
+  }
+
+  return { player };
 }
 
 export type ExecuteResult = {
   player: PlayerState;
   nextEventId?: string;
   nextLocationId?: string;
+  nextRoute?: 'map';
 };
 
 export function executeChoice(choice: Choice, player: PlayerState): ExecuteResult {
   let nextPlayer: PlayerState = player;
   let nextEventId: string | undefined = choice.next?.eventId;
   let nextLocationId: string | undefined = choice.next?.locationId;
+  const nextRoute = choice.route;
 
   for (const effect of choice.effects ?? []) {
     const result = applyEffect(effect, nextPlayer);
@@ -64,6 +127,9 @@ export function executeChoice(choice: Choice, player: PlayerState): ExecuteResul
     nextPlayer = { ...nextPlayer, location: nextLocationId };
   }
 
-  return { player: nextPlayer, nextEventId, nextLocationId };
+  return { player: nextPlayer, nextEventId, nextLocationId, nextRoute };
 }
 
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
+}

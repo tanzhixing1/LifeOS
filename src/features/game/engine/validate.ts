@@ -27,11 +27,33 @@ function validateEffect(errors: string[], eventId: string, choiceIndex: number, 
     if (!effect.key) push(errors, `[${eventId}] options[${choiceIndex}].effects[${effectIndex}] missing key`);
     return;
   }
+  if (effect.type === 'advanceTime') {
+    if (typeof effect.minutes !== 'number' || !Number.isFinite(effect.minutes)) {
+      push(errors, `[${eventId}] options[${choiceIndex}].effects[${effectIndex}] minutes must be number`);
+    }
+    return;
+  }
+  if (effect.type === 'vitalsDelta') {
+    if (!effect.deltas || typeof effect.deltas !== 'object') {
+      push(errors, `[${eventId}] options[${choiceIndex}].effects[${effectIndex}] missing deltas`);
+    }
+    return;
+  }
+  if (effect.type === 'walletDelta') {
+    if (typeof effect.money !== 'number' || !Number.isFinite(effect.money)) {
+      push(errors, `[${eventId}] options[${choiceIndex}].effects[${effectIndex}] money must be number`);
+    }
+    return;
+  }
+  if (effect.type === 'sleepToNextDay') return;
   if (!effect.eventId) push(errors, `[${eventId}] options[${choiceIndex}].effects[${effectIndex}] missing eventId`);
 }
 
 function validateChoice(errors: string[], eventId: string, choice: Choice, choiceIndex: number) {
   if (!choice.text) push(errors, `[${eventId}] options[${choiceIndex}] missing text`);
+  if (choice.route && choice.route !== 'map') {
+    push(errors, `[${eventId}] options[${choiceIndex}] unsupported route: ${choice.route}`);
+  }
 
   for (const [i, c] of (choice.conditions ?? []).entries()) {
     validateCondition(errors, eventId, choiceIndex, c, i);

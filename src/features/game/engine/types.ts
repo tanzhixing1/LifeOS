@@ -34,15 +34,46 @@ export type OpenHours = {
   endMinute?: number;
 };
 
+export type GameNpc = {
+  id: string;
+  name: string;
+  role?: string;
+  description: string;
+  personalityTags?: string[];
+};
+
+export type NpcScheduleBlock = {
+  npcId: string;
+  locationId: string;
+  startHour: number;
+  startMinute?: number;
+  endHour: number;
+  endMinute?: number;
+  activity?: string;
+};
+
+export type NpcLocationEncounter = {
+  npcId: string;
+  locationId: string;
+  description: string;
+  talkEventId: string;
+  choiceText?: string;
+};
+
 export type Effect =
   | { type: 'setFlag'; key: string; value: boolean }
   | { type: 'addAttr'; key: string; value: number }
+  | { type: 'advanceTime'; minutes: number }
+  | { type: 'vitalsDelta'; deltas: Partial<PlayerVitals> }
+  | { type: 'walletDelta'; money: number }
+  | { type: 'sleepToNextDay' }
   | { type: 'gotoEvent'; eventId: string };
 
 export type Choice = {
   text: string;
   conditions?: Condition[];
   effects?: Effect[];
+  route?: 'map';
   next?: { eventId?: string; locationId?: string };
 };
 

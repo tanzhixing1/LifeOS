@@ -4,41 +4,39 @@
     {
       "id": "demo_start",
       "title": "清晨",
-      "paragraphs": ["你在昏暗的房间里醒来。窗外的风像一段还没写完的句子。", "今天要做什么，由你来决定。"],
+      "paragraphs": [
+        "你推开窗时，雾莓镇还带着一点没醒透的安静。",
+        "今天要做什么，先从小屋里慢慢想起。"
+      ],
       "options": [
         {
-          "text": "泡一杯茶",
-          "effects": [
-            { "type": "addAttr", "key": "sanity", "value": 1 },
-            { "type": "setFlag", "key": "tea", "value": true }
-          ],
-          "next": { "eventId": "demo_room" }
+          "text": "推开小屋的门",
+          "next": { "eventId": "home_hut", "locationId": "home" }
         },
         {
-          "text": "出门去街角",
-          "next": { "eventId": "demo_street", "locationId": "street" }
-        },
-        {
-          "text": "翻开笔记",
-          "effects": [{ "type": "setFlag", "key": "read_note", "value": true }],
-          "next": { "eventId": "demo_note" }
-        },
-        {
-          "text": "听见门外的声音",
-          "next": { "eventId": "demo_vn_morning" }
+          "text": "听听门外的动静",
+          "next": { "eventId": "demo_vn_morning", "locationId": "home" }
         }
       ]
     },
     {
       "id": "demo_vn_morning",
-      "title": "清晨的魔女小屋",
+      "title": "门外的声音",
       "presentation": "visualNovel",
       "backgroundId": "room_morning",
-      "characters": [{ "id": "mentor", "name": "莉莉丝", "position": "right", "defaultSpriteId": "mentor_neutral", "defaultExpression": "平静" }],
+      "characters": [
+        {
+          "id": "mentor",
+          "name": "莉莉丝",
+          "position": "right",
+          "defaultSpriteId": "mentor_neutral",
+          "defaultExpression": "平静"
+        }
+      ],
       "dialogue": [
-        { "speakerId": "mentor", "speakerName": "莉莉丝", "spriteId": "mentor_neutral", "text": "你醒了。" },
-        { "speakerId": "mentor", "speakerName": "莉莉丝", "spriteId": "mentor_neutral", "text": "今天的魔力看起来比昨天稳定一点。" },
-        { "speakerId": "me", "speakerName": "我", "text": "也许是因为我终于完成了一些现实里的事情。" }
+        { "speakerId": "mentor", "speakerName": "莉莉丝", "spriteId": "mentor_neutral", "text": "你醒得正好。" },
+        { "speakerId": "mentor", "speakerName": "莉莉丝", "spriteId": "mentor_neutral", "text": "今天的雾看着比昨天轻一点。" },
+        { "speakerId": "me", "speakerName": "我", "text": "也许是因为我终于把昨晚的事情收拾完了。" }
       ],
       "options": [
         {
@@ -47,28 +45,35 @@
             { "type": "setFlag", "key": "met_mentor", "value": true },
             { "type": "addAttr", "key": "focus", "value": 1 }
           ],
-          "next": { "eventId": "demo_note" }
+          "next": { "eventId": "demo_note", "locationId": "home" }
         },
-        { "text": "去市集看看", "next": { "eventId": "demo_market", "locationId": "market" } }
+        {
+          "text": "去市集看看",
+          "next": { "eventId": "market_morning", "locationId": "market" }
+        }
       ]
     },
     {
       "id": "demo_room",
       "title": "房间",
-      "paragraphs": ["空气里有淡淡的茶香。桌上摊着一张空白的纸。"],
+      "paragraphs": ["屋里有淡淡的茶香。桌上摊着一页没写完的纸。"],
       "options": [
-        { "text": "开始今天的练习", "next": { "eventId": "demo_practice" } },
+        {
+          "text": "开始今天的练习",
+          "effects": [{ "type": "addAttr", "key": "focus", "value": 1 }],
+          "next": { "eventId": "home_hut", "locationId": "home" }
+        },
         {
           "text": "再躺 5 分钟",
           "effects": [{ "type": "addAttr", "key": "stamina", "value": 1 }],
-          "next": { "eventId": "demo_end_sleep" }
+          "next": { "eventId": "home_hut", "locationId": "home" }
         }
       ]
     },
     {
       "id": "demo_note",
       "title": "笔记",
-      "paragraphs": ["纸页上写着：如果你今天愿意走远一点，或许会遇到一个能改变心情的地方。"],
+      "paragraphs": ["纸页上写着几行提醒：慢一点没关系，但别把今天浪费在发呆里。"],
       "options": [
         {
           "text": "记下一个目标",
@@ -76,97 +81,228 @@
             { "type": "setFlag", "key": "goal_set", "value": true },
             { "type": "addAttr", "key": "focus", "value": 1 }
           ],
-          "next": { "eventId": "demo_room" }
-        },
-        { "text": "合上笔记", "next": { "eventId": "demo_room" } }
-      ]
-    },
-    {
-      "id": "demo_street",
-      "title": "街角",
-      "paragraphs": ["街角很安静。路面潮湿，像是有人刚从这里经过。"],
-      "options": [
-        {
-          "text": "按着笔记上的方向走",
-          "conditions": [{ "type": "flag", "key": "read_note", "op": "eq", "value": true }],
-          "next": { "eventId": "demo_hidden", "locationId": "market" }
+          "next": { "eventId": "demo_room", "locationId": "home" }
         },
         {
-          "text": "随便逛逛",
-          "effects": [{ "type": "addAttr", "key": "charisma", "value": 1 }],
-          "next": { "eventId": "demo_market", "locationId": "market" }
+          "text": "合上笔记",
+          "next": { "eventId": "home_hut", "locationId": "home" }
         }
       ]
     },
     {
-      "id": "demo_practice",
-      "title": "练习",
-      "paragraphs": ["你把纸铺平，深呼吸。", "今天只需要做一件小事：把这件小事做完。"],
+      "id": "home_hut",
+      "title": "魔女小屋",
+      "paragraphs": ["你回到熟悉的小屋。窗边堆着没整理完的笔记，床看上去比任何大课题都更有说服力。"],
       "options": [
         {
-          "text": "专注 10 分钟",
-          "conditions": [{ "type": "attr", "key": "focus", "op": "gte", "value": 1 }],
-          "effects": [{ "type": "setFlag", "key": "practiced", "value": true }],
-          "next": { "eventId": "demo_end_good" }
+          "text": "睡觉",
+          "effects": [{ "type": "sleepToNextDay" }],
+          "next": { "eventId": "home_hut" }
         },
-        { "text": "先算了", "next": { "eventId": "demo_room" } }
-      ]
-    },
-    {
-      "id": "demo_hidden",
-      "title": "隐秘处",
-      "paragraphs": ["你在一面旧墙后发现一条狭窄的小路。", "路的尽头有一枚闪着微光的符号。"],
-      "options": [
         {
-          "text": "触摸符号",
-          "conditions": [{ "type": "once", "key": "found_hidden" }],
+          "text": "出门",
+          "route": "map"
+        },
+        {
+          "text": "整理笔记",
           "effects": [
-            { "type": "setFlag", "key": "found_hidden", "value": true },
-            { "type": "addAttr", "key": "intelligence", "value": 1 }
+            { "type": "addAttr", "key": "focus", "value": 1 },
+            { "type": "advanceTime", "minutes": 30 }
           ],
-          "next": { "eventId": "demo_end_secret" }
+          "next": { "eventId": "home_hut" }
         },
-        { "text": "离开", "next": { "eventId": "demo_market", "locationId": "market" } }
+        {
+          "text": "翻开笔记",
+          "effects": [{ "type": "advanceTime", "minutes": 30 }],
+          "next": { "eventId": "demo_note", "locationId": "home" }
+        },
+        {
+          "text": "听听门外的动静",
+          "next": { "eventId": "demo_vn_morning", "locationId": "home" }
+        }
       ]
     },
     {
-      "id": "demo_market",
-      "title": "小市集",
-      "paragraphs": ["小市集里有人在卖香草，也有人在卖故事。", "你可以什么都不买，也可以留下些什么。"],
+      "id": "market_morning",
+      "title": "市集",
+      "paragraphs": ["市集里有人在卖香草，也有人在卖故事。你可以什么都不买，也可以留下些东西。"],
       "options": [
         {
-          "text": "买一束香草",
+          "text": "买早餐",
+          "effects": [
+            { "type": "walletDelta", "money": -5 },
+            { "type": "vitalsDelta", "deltas": { "bodyStatus": 5 } },
+            { "type": "advanceTime", "minutes": 30 }
+          ],
+          "next": { "eventId": "market_morning" }
+        },
+        {
+          "text": "和摊主闲聊",
+          "effects": [
+            { "type": "addAttr", "key": "friendship", "value": 1 },
+            { "type": "advanceTime", "minutes": 30 }
+          ],
+          "next": { "eventId": "market_morning" }
+        },
+        {
+          "text": "离开",
+          "route": "map"
+        }
+      ]
+    },
+    {
+      "id": "grocery_shop",
+      "title": "杂货铺",
+      "paragraphs": ["货架上摆着小甜水、空白笔记本和包装过度的糖果。老板看起来很会推荐你买不需要的东西。"],
+      "options": [
+        {
+          "text": "查看商品",
+          "effects": [{ "type": "advanceTime", "minutes": 30 }],
+          "next": { "eventId": "grocery_shop" }
+        },
+        {
+          "text": "什么都不买",
+          "route": "map"
+        }
+      ]
+    },
+    {
+      "id": "church_pray",
+      "title": "教堂",
+      "paragraphs": ["你在安静的长椅上坐了一会儿。烛火很轻，像某种不会追问你的目光。"],
+      "options": [
+        {
+          "text": "做礼拜",
           "effects": [
             { "type": "addAttr", "key": "sanity", "value": 1 },
-            { "type": "setFlag", "key": "herb", "value": true }
+            { "type": "advanceTime", "minutes": 30 }
           ],
-          "next": { "eventId": "demo_end_good" }
+          "next": { "eventId": "church_pray" }
         },
-        { "text": "转身回家", "next": { "eventId": "demo_room", "locationId": "home" } }
+        {
+          "text": "离开",
+          "route": "map"
+        }
       ]
     },
     {
-      "id": "demo_end_sleep",
-      "title": "继续睡吧",
-      "paragraphs": ["你把被子拉高一点，世界变得更安静了。", "也许明天再开始也可以。"],
-      "options": [{ "text": "从头再来", "effects": [{ "type": "gotoEvent", "eventId": "demo_start" }] }]
+      "id": "monster_forest",
+      "title": "魔物森林",
+      "paragraphs": ["林间有潮湿的泥土味，草叶边缘挂着雾。你看见几株能用的药草。"],
+      "options": [
+        {
+          "text": "采药",
+          "effects": [
+            { "type": "addAttr", "key": "proficiency", "value": 1 },
+            { "type": "vitalsDelta", "deltas": { "fatigue": 1 } },
+            { "type": "advanceTime", "minutes": 30 }
+          ],
+          "next": { "eventId": "monster_forest" }
+        },
+        {
+          "text": "不深入",
+          "route": "map"
+        }
+      ]
     },
     {
-      "id": "demo_end_good",
-      "title": "小小的完成",
-      "paragraphs": ["你做了一件小事，世界就往更明亮的方向偏了一点。"],
-      "options": [{ "text": "从头再来", "effects": [{ "type": "gotoEvent", "eventId": "demo_start" }] }]
+      "id": "bar_night",
+      "title": "酒吧",
+      "paragraphs": ["夜色落下后，酒吧终于亮起灯。杯子碰撞声、笑声和秘密一起浮在空气里。"],
+      "options": [
+        {
+          "text": "喝一杯",
+          "effects": [
+            { "type": "walletDelta", "money": -10 },
+            { "type": "vitalsDelta", "deltas": { "intoxication": 1 } },
+            { "type": "addAttr", "key": "charisma", "value": 1 },
+            { "type": "advanceTime", "minutes": 30 }
+          ],
+          "next": { "eventId": "bar_night" }
+        },
+        {
+          "text": "找人聊天",
+          "effects": [
+            { "type": "addAttr", "key": "friendship", "value": 1 },
+            { "type": "advanceTime", "minutes": 30 }
+          ],
+          "next": { "eventId": "bar_night" }
+        },
+        {
+          "text": "离开",
+          "route": "map"
+        }
+      ]
     },
     {
-      "id": "demo_end_secret",
-      "title": "秘密",
-      "paragraphs": ["符号的微光在你的掌心消失。", "你知道自己记住了某种新的规则。"],
-      "options": [{ "text": "从头再来", "effects": [{ "type": "gotoEvent", "eventId": "demo_start" }] }]
+      "id": "lilith_talk_church",
+      "title": "莉莉丝",
+      "paragraphs": [
+        "莉莉丝坐在最后一排，手里拿着一本倒着翻的祷文。",
+        "她抬眼看你，像是已经知道你会在这个时候出现。",
+        "“祷文倒着看也有意思。至少这样没人能确定我到底虔不虔诚。”"
+      ],
+      "options": [
+        {
+          "text": "回到镇上",
+          "effects": [{ "type": "advanceTime", "minutes": 10 }],
+          "route": "map"
+        }
+      ]
+    },
+    {
+      "id": "lilith_talk_market",
+      "title": "莉莉丝",
+      "paragraphs": [
+        "莉莉丝正站在摊位前，认真比较两瓶颜色可疑的小甜水。",
+        "“你也来市集？不错，亲爱的，你终于学会用脚而不是用幻想生活了。”",
+        "她晃了晃手里的瓶子：“要喝小甜水吗？”"
+      ],
+      "options": [
+        {
+          "text": "陪她聊一会儿",
+          "effects": [{ "type": "advanceTime", "minutes": 10 }],
+          "route": "map"
+        }
+      ]
+    },
+    {
+      "id": "lilith_talk_grocery",
+      "title": "莉莉丝",
+      "paragraphs": [
+        "莉莉丝把一盒包装过度的糖果放回货架，又若无其事地拿了起来。",
+        "“人类的糖果很神奇。它们明明没有魔力，却总能让人多买一盒。”"
+      ],
+      "options": [
+        {
+          "text": "听她点评糖果",
+          "effects": [{ "type": "advanceTime", "minutes": 10 }],
+          "route": "map"
+        }
+      ]
+    },
+    {
+      "id": "lilith_talk_bar",
+      "title": "莉莉丝",
+      "paragraphs": [
+        "莉莉丝坐在吧台边，杯子里浮着一片发光的薄荷叶。",
+        "她向你举杯，笑得像夜色本身也欠她一个秘密。"
+      ],
+      "options": [
+        {
+          "text": "在吧台边坐一会儿",
+          "effects": [{ "type": "advanceTime", "minutes": 10 }],
+          "route": "map"
+        }
+      ]
     }
   ],
   "map": [
-    { "id": "home", "name": "房间", "neighbors": ["street"] },
-    { "id": "street", "name": "街角", "neighbors": ["home", "market"] },
-    { "id": "market", "name": "小市集", "neighbors": ["street"] }
+    { "id": "home", "name": "魔女小屋", "neighbors": ["market", "grocery", "church"] },
+    { "id": "market", "name": "市集", "neighbors": ["home", "grocery", "church", "forest"] },
+    { "id": "grocery", "name": "杂货铺", "neighbors": ["home", "market"] },
+    { "id": "church", "name": "教堂", "neighbors": ["home", "market"] },
+    { "id": "forest", "name": "魔物森林", "neighbors": ["market", "bar"] },
+    { "id": "bar", "name": "酒吧", "neighbors": ["forest"] }
   ]
 }

@@ -1,13 +1,16 @@
 import { router } from 'expo-router';
 import React, { useMemo } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import demoPackJson from '@/features/game/content/demo/events.json';
+import { demoLocations } from '@/features/game/content/demo/locations';
+import { demoNpcLocationEncounters, demoNpcSchedules, demoNpcs } from '@/features/game/content/demo/npcs';
 import { executeChoice, getAvailableChoices } from '@/features/game/engine/executor';
+import { getNpcEncountersAtLocation } from '@/features/game/engine/npc';
 import { formatGameTime } from '@/features/game/engine/time';
-import type { ContentPack, EventNode } from '@/features/game/engine/types';
+import type { Choice, ContentPack, EventNode } from '@/features/game/engine/types';
 import { validateContentPack } from '@/features/game/engine/validate';
 import { EventRenderer } from '@/features/game/ui/EventRenderer';
 import { useThemeColor } from '@/hooks/use-theme-color';
@@ -18,28 +21,48 @@ export default function GamePlayScreen() {
   const cardBg = useThemeColor({ light: '#F7F3EE', dark: '#1C1F22' }, 'background');
   const cardBorder = useThemeColor({ light: '#D8D0C7', dark: '#2A3036' }, 'text');
   const mutedText = useThemeColor({ light: '#7A756F', dark: '#A7B0BE' }, 'text');
-  const accent = useThemeColor({ light: '#D1BBDE', dark: '#D1BBDE' }, 'tint');
 
   const pack = demoPackJson as ContentPack;
   const validation = useMemo(() => validateContentPack(pack), [pack]);
-  const eventsById = useMemo(() => new Map<string, EventNode>(pack.events.map((e) => [e.id, e])), [pack.events]);
+  const eventsById = useMemo(() => new Map<string, EventNode>(pack.events.map((event) => [event.id, event])), [pack.events]);
+  const locationNameById = useMemo(() => new Map(demoLocations.map((location) => [location.id, location.name])), []);
 
   const player = useGameStore((s) => s.player);
   const eventId = useGameStore((s) => s.eventId);
   const setPlayer = useGameStore((s) => s.setPlayer);
+  const setLocation = useGameStore((s) => s.setLocation);
   const gotoEvent = useGameStore((s) => s.gotoEvent);
-  const save = useGameStore((s) => s.save);
-  const load = useGameStore((s) => s.load);
 
   const event = eventsById.get(eventId) ?? eventsById.get(pack.startEventId);
-  const choices = useMemo(() => (event ? getAvailableChoices(event, player) : []), [event, player]);
+  const currentLocation = useMemo(
+    () => demoLocations.find((location) => location.id === (player.location ?? 'home')),
+    [player.location]
+  );
+  const choices = useMemo(() => {
+    if (!event) return [];
 
-  function confirmLoadSlot(slotId: string) {
-    Alert.alert('读取存档？', '这会用存档覆盖当前游戏状态。', [
-      { text: '取消', style: 'cancel' },
-      { text: '读取', onPress: () => load(slotId) },
-    ]);
-  }
+    const baseChoices = getAvailableChoices(event, player);
+    if (!currentLocation || event.presentation === 'visualNovel' || event.id !== currentLocation.entryEventId) {
+      return baseChoices;
+    }
+
+    const npcChoices = getNpcEncountersAtLocation(
+      currentLocation.id,
+      player.gameTime,
+      demoNpcs,
+      demoNpcSchedules,
+      demoNpcLocationEncounters,
+      demoLocations
+    )
+      .filter((encounter) => eventsById.has(encounter.talkEventId))
+      .map<Choice>((encounter) => ({
+        text: encounter.choiceText ?? `和${encounter.npc.name}说话`,
+        next: { eventId: encounter.talkEventId },
+      }));
+
+    return [...baseChoices, ...npcChoices];
+  }, [currentLocation, event, eventsById, player]);
+  const locationLabel = locationNameById.get(player.location ?? 'home') ?? '未命名地点';
 
   return (
     <ThemedView style={[styles.screen, { backgroundColor: pageBg }]}>
@@ -51,6 +74,7 @@ export default function GamePlayScreen() {
           <ThemedText style={styles.bigTitle}>事件</ThemedText>
           <View style={{ width: 40 }} />
         </View>
+
         <View style={[styles.statusBar, { backgroundColor: cardBg, borderColor: cardBorder }]}>
           <ThemedText style={[styles.statusText, { color: mutedText }]}>{formatGameTime(player.gameTime)}</ThemedText>
           <ThemedText style={[styles.statusText, { color: mutedText }]}>疲劳 {player.vitals.fatigue}</ThemedText>
@@ -71,8 +95,8 @@ export default function GamePlayScreen() {
         </View>
       ) : event ? (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.body}>
-          <View style={[styles.locationRow, { borderColor: cardBorder, backgroundColor: cardBg }]}>
-            <ThemedText style={[styles.locationText, { color: mutedText }]}>地点：{player.location ?? '未设置'}</ThemedText>
+          <View style={[styles.locationRow, { backgroundColor: cardBg, borderColor: cardBorder }]}>
+            <ThemedText style={[styles.locationText, { color: mutedText }]}>当前位置：{locationLabel}</ThemedText>
           </View>
 
           <EventRenderer
@@ -81,25 +105,16 @@ export default function GamePlayScreen() {
             onSelectChoice={(choice) => {
               const result = executeChoice(choice, player);
               setPlayer(result.player);
+              if (result.nextLocationId) {
+                setLocation(result.nextLocationId);
+              }
+              if (result.nextRoute === 'map') {
+                router.replace('/(tabs)/game/map');
+                return;
+              }
               if (result.nextEventId) gotoEvent(result.nextEventId);
             }}
           />
-
-          <View style={[styles.card, { backgroundColor: cardBg, borderColor: cardBorder }]}>
-            <ThemedText style={styles.cardTitle}>存档</ThemedText>
-            <View style={styles.slotRow}>
-              <Pressable
-                onPress={() => save('slot1')}
-                style={({ pressed }) => [styles.chip, { borderColor: accent, opacity: pressed ? 0.92 : 1 }]}>
-                <ThemedText style={[styles.chipText, { color: accent }]}>保存 1</ThemedText>
-              </Pressable>
-              <Pressable
-                onPress={() => confirmLoadSlot('slot1')}
-                style={({ pressed }) => [styles.chip, { borderColor: accent, opacity: pressed ? 0.92 : 1 }]}>
-                <ThemedText style={[styles.chipText, { color: accent }]}>读取 1</ThemedText>
-              </Pressable>
-            </View>
-          </View>
         </ScrollView>
       ) : null}
     </ThemedView>
@@ -110,7 +125,7 @@ const styles = StyleSheet.create({
   screen: { flex: 1, paddingHorizontal: 18, paddingTop: 18 },
   header: { paddingTop: 4, paddingBottom: 12, gap: 8 },
   headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  bigTitle: { fontSize: 26, fontWeight: '900', letterSpacing: 0.2, textAlign: 'center' },
+  bigTitle: { fontSize: 28, fontWeight: '900', letterSpacing: 0.2, textAlign: 'center' },
   backText: { fontSize: 13, lineHeight: 16, fontWeight: '900', width: 40 },
   statusBar: {
     borderWidth: 1,
@@ -126,10 +141,7 @@ const styles = StyleSheet.create({
   body: { gap: 12, paddingBottom: 18 },
   card: { borderWidth: 1, borderRadius: 18, padding: 14, gap: 10 },
   cardTitle: { fontSize: 16, lineHeight: 20, fontWeight: '900' },
-  chip: { borderWidth: 1, borderRadius: 14, paddingVertical: 12, paddingHorizontal: 12 },
-  chipText: { fontSize: 14, lineHeight: 18, fontWeight: '900' },
   errorText: { fontSize: 12, lineHeight: 16, fontWeight: '700', paddingVertical: 2 },
   locationRow: { borderWidth: 1, borderRadius: 14, paddingVertical: 8, paddingHorizontal: 12 },
   locationText: { fontSize: 12, lineHeight: 16, fontWeight: '800' },
-  slotRow: { flexDirection: 'row', gap: 10, flexWrap: 'wrap' },
 });
