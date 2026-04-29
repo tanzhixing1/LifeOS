@@ -1,13 +1,12 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
+import type { LegacyMoodKind, MoodIntensity, MoodKind } from '@/core/constants/mood';
 import { zustandStorage } from '@/services/storage/zustandStorage';
 
+export type { LegacyMoodKind, MoodIntensity, MoodKind } from '@/core/constants/mood';
+
 export type FragmentType = 'inspiration' | 'mood';
-
-export type MoodKind = '开心' | '平静' | '焦虑' | '难过' | '生气' | '疲惫';
-
-export type MoodIntensity = 1 | 2 | 3 | 4 | 5;
 
 export type InspirationFragment = {
   id: string;
@@ -20,7 +19,7 @@ export type InspirationFragment = {
 export type MoodFragment = {
   id: string;
   type: 'mood';
-  mood: MoodKind;
+  mood: MoodKind | LegacyMoodKind;
   intensity: MoodIntensity;
   note: string;
   createdAt: number;

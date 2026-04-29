@@ -27,6 +27,7 @@ export type DailyTimelineRecord = {
   title: string;
   note?: string;
   category?: string;
+  categoryColor?: string;
   iconId?: string;
   kind: DailyTimelineRecordKind;
   dedupeKey?: string;

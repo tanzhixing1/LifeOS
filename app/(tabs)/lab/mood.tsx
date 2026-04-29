@@ -3,25 +3,16 @@ import React, { useMemo, useState } from 'react';
 import { Alert, FlatList, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
+import { getMoodLabel, getMoodMeta, MOOD_META, MOOD_OPTIONS, type MoodIntensity, type MoodKind } from '@/core/constants/mood';
 import { AppButton } from '@/core/ui/AppButton';
 import { AppChip } from '@/core/ui/AppChip';
 import { ScreenScaffold } from '@/core/ui/ScreenScaffold';
 import { SectionCard } from '@/core/ui/SectionCard';
 import { uiTokens } from '@/core/theme/tokens';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { type MoodFragment, type MoodIntensity, type MoodKind, useFragmentStore } from '@/stores';
+import { type MoodFragment, useFragmentStore } from '@/stores';
 
-const MOOD_OPTIONS: MoodKind[] = ['开心', '平静', '焦虑', '难过', '生气', '疲惫'];
 const INTENSITY_OPTIONS: MoodIntensity[] = [1, 2, 3, 4, 5];
-
-const MOOD_META: Record<MoodKind, { mark: string; color: string; bg: string }> = {
-  开心: { mark: '✦', color: '#C79B3B', bg: 'rgba(244,203,110,0.18)' },
-  平静: { mark: '☾', color: '#7D9A8A', bg: 'rgba(125,154,138,0.16)' },
-  焦虑: { mark: '◇', color: '#A98ABC', bg: 'rgba(169,138,188,0.16)' },
-  难过: { mark: '☁', color: '#7590B0', bg: 'rgba(117,144,176,0.16)' },
-  生气: { mark: '△', color: '#C87979', bg: 'rgba(200,121,121,0.15)' },
-  疲惫: { mark: '…', color: '#9A8F84', bg: 'rgba(154,143,132,0.16)' },
-};
 
 function formatCreatedAt(timestamp: number) {
   const d = new Date(timestamp);
@@ -58,7 +49,7 @@ export default function MoodScreen() {
   }
 
   function confirmDelete(item: MoodFragment) {
-    Alert.alert('删除心情？', `确定删除「${item.mood} · ${item.intensity}」这条记录吗？`, [
+    Alert.alert('删除心情？', `确定删除「${getMoodLabel(item.mood)} · ${item.intensity}」这条记录吗？`, [
       { text: '取消', style: 'cancel' },
       {
         text: '删除',
@@ -163,7 +154,7 @@ export default function MoodScreen() {
           </SectionCard>
         }
         renderItem={({ item }) => {
-          const meta = MOOD_META[item.mood];
+          const meta = getMoodMeta(item.mood);
           return (
             <Pressable
               onPress={() => router.push({ pathname: '/(tabs)/lab/fragments/[id]', params: { id: item.id } })}
@@ -172,7 +163,7 @@ export default function MoodScreen() {
                 <View style={[styles.moodRibbon, { backgroundColor: meta.bg }]} />
                 <View style={styles.cardBody}>
                   <View style={styles.cardTitleRow}>
-                    <ThemedText style={[styles.cardTitle, { color: meta.color }]}>{meta.mark} {item.mood}</ThemedText>
+                    <ThemedText style={[styles.cardTitle, { color: meta.color }]}>{meta.mark} {getMoodLabel(item.mood)}</ThemedText>
                     <ThemedText style={[styles.cardMeta, { color: palette.muted }]}>强度 {item.intensity}/5</ThemedText>
                   </View>
                   <View style={styles.miniMeter}>

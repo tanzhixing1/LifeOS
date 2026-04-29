@@ -8,7 +8,7 @@ import { executeChoice, getAvailableChoices } from '@/features/game/engine/execu
 import type { ContentPack, EventNode } from '@/features/game/engine/types';
 import { validateContentPack } from '@/features/game/engine/validate';
 import demoPackJson from '@/features/game/content/demo/events.json';
-import { EventPanel } from '@/features/game/ui/EventPanel';
+import { EventRenderer } from '@/features/game/ui/EventRenderer';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { useGameStore } from '@/stores';
 
@@ -57,7 +57,7 @@ export default function GamePlayScreen() {
           </ScrollView>
         </View>
       ) : event ? (
-        <View style={styles.body}>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.body}>
           <View style={[styles.metaRow, { backgroundColor: cardBg, borderColor: cardBorder }]}>
             <ThemedText style={[styles.metaText, { color: mutedText }]}>
               地点：{player.location ?? '未设置'} · 状态：{Object.entries(player.attrs)
@@ -66,7 +66,7 @@ export default function GamePlayScreen() {
             </ThemedText>
           </View>
 
-          <EventPanel
+          <EventRenderer
             event={event}
             choices={choices}
             onSelectChoice={(choice) => {
@@ -91,7 +91,7 @@ export default function GamePlayScreen() {
               </Pressable>
             </View>
           </View>
-        </View>
+        </ScrollView>
       ) : null}
     </ThemedView>
   );
@@ -113,4 +113,3 @@ const styles = StyleSheet.create({
   metaText: { fontSize: 12, lineHeight: 16, fontWeight: '800' },
   slotRow: { flexDirection: 'row', gap: 10, flexWrap: 'wrap' },
 });
-

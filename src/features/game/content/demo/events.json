@@ -22,7 +22,34 @@
           "text": "翻开笔记",
           "effects": [{ "type": "setFlag", "key": "read_note", "value": true }],
           "next": { "eventId": "demo_note" }
+        },
+        {
+          "text": "听见门外的声音",
+          "next": { "eventId": "demo_vn_morning" }
         }
+      ]
+    },
+    {
+      "id": "demo_vn_morning",
+      "title": "清晨的魔女小屋",
+      "presentation": "visualNovel",
+      "backgroundId": "room_morning",
+      "characters": [{ "id": "mentor", "name": "导师", "position": "right", "defaultExpression": "平静" }],
+      "dialogue": [
+        { "speakerId": "mentor", "speakerName": "导师", "text": "你醒了。" },
+        { "speakerId": "mentor", "speakerName": "导师", "text": "今天的魔力看起来比昨天稳定一点。" },
+        { "speakerId": "me", "speakerName": "我", "text": "也许是因为我终于完成了一些现实里的事情。" }
+      ],
+      "options": [
+        {
+          "text": "继续整理魔法笔记",
+          "effects": [
+            { "type": "setFlag", "key": "met_mentor", "value": true },
+            { "type": "addAttr", "key": "focus", "value": 1 }
+          ],
+          "next": { "eventId": "demo_note" }
+        },
+        { "text": "去市集看看", "next": { "eventId": "demo_market", "locationId": "market" } }
       ]
     },
     {
@@ -143,4 +170,3 @@
     { "id": "market", "name": "小市集", "neighbors": ["street"] }
   ]
 }
-

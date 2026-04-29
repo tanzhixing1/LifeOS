@@ -29,6 +29,70 @@ const SOURCE_DETAIL_LABELS: Record<DailyTimelineRecord['source'], string> = {
   manual: '手动记录',
 };
 const DEFAULT_MANUAL_CATEGORY = '日常';
+const DEFAULT_TIMELINE_CATEGORY_COLOR = '#8B6FA1';
+const TIMELINE_CATEGORY_OPTIONS = ['日常', '健康', '友情', '恋爱', '打游戏', '厕所', '喝水', '睡觉'] as const;
+const TIMELINE_RECOMMENDED_COLORS = ['#8B6FA1', '#C69A2E', '#5E8FD2', '#5C9B72', '#D66B2D', '#C56F92', '#7D9A8A', '#6B5AC7'];
+const TIMELINE_COLOR_PALETTE = [
+  ['#F4B4B4', '#E38181', '#D85E5E', '#B84242', '#7F2A2A', '#5A1D1D', '#F1D3C6', '#C8B9AE'],
+  ['#F3C7A6', '#E9A46E', '#D66B2D', '#C45A20', '#8A3B12', '#5F280D', '#F3D5B8', '#CDB49A'],
+  ['#F5E8AB', '#E7CD63', '#C69A2E', '#A27A18', '#745710', '#4B390B', '#ECE2C1', '#CFC3A0'],
+  ['#D6EDB8', '#A9D67B', '#74B85D', '#5C9B72', '#3B6F48', '#284A31', '#DCE8C9', '#B8C9A7'],
+  ['#BDEBE3', '#78D0C5', '#44AFA9', '#2B8A88', '#1C6463', '#124344', '#C7E3DD', '#A6C1BB'],
+  ['#C8E4F4', '#8CBFE7', '#5E8FD2', '#436EB5', '#2B4C82', '#1B3257', '#D1DCEA', '#AAB8C8'],
+  ['#D7D0F6', '#AA9AE9', '#7B68D6', '#6B5AC7', '#4B3E95', '#312862', '#DDD5F0', '#B9B1D0'],
+  ['#F1D0EA', '#DFA1D0', '#C56F92', '#A85679', '#7A3E57', '#552A3C', '#E9D2DE', '#C9B2BE'],
+  ['#F6F2EC', '#E1D8CD', '#C8B9AE', '#A5968D', '#7B7069', '#514A45', '#D7D2D8', '#9C97A0'],
+];
+
+type TimelineCategoryOption = (typeof TIMELINE_CATEGORY_OPTIONS)[number];
+type TimelineCategoryMeta = {
+  color: string;
+  textColor: string;
+  backgroundColor: string;
+  borderColor: string;
+};
+
+const TIMELINE_CATEGORY_META: Record<TimelineCategoryOption, TimelineCategoryMeta> = {
+  日常: { color: '#8F6F56', textColor: '#8F6F56', backgroundColor: 'rgba(143,111,86,0.16)', borderColor: 'rgba(143,111,86,0.24)' },
+  健康: { color: '#4E8A70', textColor: '#4E8A70', backgroundColor: 'rgba(78,138,112,0.16)', borderColor: 'rgba(78,138,112,0.24)' },
+  友情: { color: '#5679A6', textColor: '#5679A6', backgroundColor: 'rgba(86,121,166,0.16)', borderColor: 'rgba(86,121,166,0.24)' },
+  恋爱: { color: '#B05F7A', textColor: '#B05F7A', backgroundColor: 'rgba(176,95,122,0.16)', borderColor: 'rgba(176,95,122,0.24)' },
+  打游戏: { color: '#6B5AC7', textColor: '#6B5AC7', backgroundColor: 'rgba(107,90,199,0.16)', borderColor: 'rgba(107,90,199,0.24)' },
+  厕所: { color: '#7B7E89', textColor: '#7B7E89', backgroundColor: 'rgba(123,126,137,0.16)', borderColor: 'rgba(123,126,137,0.24)' },
+  喝水: { color: '#3A8FB0', textColor: '#3A8FB0', backgroundColor: 'rgba(58,143,176,0.16)', borderColor: 'rgba(58,143,176,0.24)' },
+  睡觉: { color: '#6B68A6', textColor: '#6B68A6', backgroundColor: 'rgba(107,104,166,0.16)', borderColor: 'rgba(107,104,166,0.24)' },
+};
+
+function normalizeHexColor(value?: string): string | null {
+  if (!value) return null;
+  const normalized = value.trim().toUpperCase();
+  return /^#([0-9A-F]{6})$/.test(normalized) ? normalized : null;
+}
+
+function hexToRgba(hex: string, alpha: number): string {
+  const normalized = normalizeHexColor(hex);
+  if (!normalized) return `rgba(139,111,161,${alpha})`;
+  const red = Number.parseInt(normalized.slice(1, 3), 16);
+  const green = Number.parseInt(normalized.slice(3, 5), 16);
+  const blue = Number.parseInt(normalized.slice(5, 7), 16);
+  return `rgba(${red},${green},${blue},${alpha})`;
+}
+
+function getTimelineCategoryDefaultColor(category?: string): string {
+  if (!category) return DEFAULT_TIMELINE_CATEGORY_COLOR;
+  return TIMELINE_CATEGORY_META[category as TimelineCategoryOption]?.color ?? DEFAULT_TIMELINE_CATEGORY_COLOR;
+}
+
+function getTimelineCategoryMeta(category?: string, categoryColor?: string): TimelineCategoryMeta {
+  const presetMeta = category ? TIMELINE_CATEGORY_META[category as TimelineCategoryOption] : null;
+  const color = normalizeHexColor(categoryColor) ?? presetMeta?.color ?? DEFAULT_TIMELINE_CATEGORY_COLOR;
+  return {
+    color,
+    textColor: normalizeHexColor(categoryColor) ? color : presetMeta?.textColor ?? DEFAULT_TIMELINE_CATEGORY_COLOR,
+    backgroundColor: normalizeHexColor(categoryColor) ? hexToRgba(color, 0.16) : presetMeta?.backgroundColor ?? hexToRgba(DEFAULT_TIMELINE_CATEGORY_COLOR, 0.12),
+    borderColor: normalizeHexColor(categoryColor) ? hexToRgba(color, 0.28) : presetMeta?.borderColor ?? hexToRgba(DEFAULT_TIMELINE_CATEGORY_COLOR, 0.22),
+  };
+}
 
 type CalendarDay = {
   date: Date;
@@ -131,9 +195,15 @@ export default function ToolsHomeScreen() {
   const [manualTitle, setManualTitle] = useState('');
   const [manualTime, setManualTime] = useState(() => getDefaultTimeInputValue());
   const [manualCategory, setManualCategory] = useState(DEFAULT_MANUAL_CATEGORY);
+  const [manualCategoryColor, setManualCategoryColor] = useState(() => getTimelineCategoryDefaultColor(DEFAULT_MANUAL_CATEGORY));
   const [manualNote, setManualNote] = useState('');
   const [manualFormError, setManualFormError] = useState('');
   const [editingRecord, setEditingRecord] = useState<DailyTimelineRecord | null>(null);
+  const [categoryPickerVisible, setCategoryPickerVisible] = useState(false);
+  const [draftCategory, setDraftCategory] = useState(DEFAULT_MANUAL_CATEGORY);
+  const [draftCategoryColor, setDraftCategoryColor] = useState(() => getTimelineCategoryDefaultColor(DEFAULT_MANUAL_CATEGORY));
+  const [draftCategoryHexInput, setDraftCategoryHexInput] = useState(() => getTimelineCategoryDefaultColor(DEFAULT_MANUAL_CATEGORY));
+  const [draftCategoryHexError, setDraftCategoryHexError] = useState('');
 
   const habitsMap = useHabitStore((s) => s.habits);
   const logs = useHabitStore((s) => s.logs);
@@ -194,6 +264,16 @@ export default function ToolsHomeScreen() {
     [selectedDate]
   );
   const selectedTimelineTitle = useMemo(() => `${selectedDateLabel} · 星期${WEEKDAY_LABELS[selectedDate.getDay()]}`, [selectedDate, selectedDateLabel]);
+  const manualCategoryName = useMemo(() => manualCategory.trim() || DEFAULT_MANUAL_CATEGORY, [manualCategory]);
+  const manualCategoryMeta = useMemo(
+    () => getTimelineCategoryMeta(manualCategoryName, manualCategoryColor),
+    [manualCategoryColor, manualCategoryName]
+  );
+  const draftCategoryName = useMemo(() => draftCategory.trim() || DEFAULT_MANUAL_CATEGORY, [draftCategory]);
+  const draftCategoryMeta = useMemo(
+    () => getTimelineCategoryMeta(draftCategoryName, draftCategoryColor),
+    [draftCategoryColor, draftCategoryName]
+  );
 
   const calendarHintText = useMemo(() => {
     if (!isTimelineExpanded) {
@@ -230,8 +310,11 @@ export default function ToolsHomeScreen() {
     setManualTitle('');
     setManualTime(getDefaultTimeInputValue());
     setManualCategory(DEFAULT_MANUAL_CATEGORY);
+    const defaultColor = getTimelineCategoryDefaultColor(DEFAULT_MANUAL_CATEGORY);
+    setManualCategoryColor(defaultColor);
     setManualNote('');
     setManualFormError('');
+    setCategoryPickerVisible(false);
     setManualModalVisible(true);
   };
 
@@ -241,8 +324,11 @@ export default function ToolsHomeScreen() {
     setManualTitle(record.title);
     setManualTime(formatTimeInputValue(getTimelineTime(record)));
     setManualCategory(record.category ?? DEFAULT_MANUAL_CATEGORY);
+    const nextColor = normalizeHexColor(record.categoryColor) ?? getTimelineCategoryDefaultColor(record.category ?? DEFAULT_MANUAL_CATEGORY);
+    setManualCategoryColor(nextColor);
     setManualNote(record.note ?? '');
     setManualFormError('');
+    setCategoryPickerVisible(false);
     setManualModalVisible(true);
   };
 
@@ -250,6 +336,66 @@ export default function ToolsHomeScreen() {
     setManualModalVisible(false);
     setManualFormError('');
     setEditingRecord(null);
+    setCategoryPickerVisible(false);
+  };
+
+  const openCategoryPicker = () => {
+    const nextCategory = manualCategory.trim() || DEFAULT_MANUAL_CATEGORY;
+    const nextColor = normalizeHexColor(manualCategoryColor) ?? getTimelineCategoryDefaultColor(nextCategory);
+    setDraftCategory(nextCategory);
+    setDraftCategoryColor(nextColor);
+    setDraftCategoryHexInput(nextColor);
+    setDraftCategoryHexError('');
+    setCategoryPickerVisible(true);
+  };
+
+  const closeCategoryPicker = () => {
+    setCategoryPickerVisible(false);
+    setDraftCategoryHexError('');
+  };
+
+  const applyTimelineCategory = (category: string) => {
+    const nextColor = getTimelineCategoryDefaultColor(category);
+    setDraftCategory(category);
+    setDraftCategoryColor(nextColor);
+    setDraftCategoryHexInput(nextColor);
+    setDraftCategoryHexError('');
+  };
+
+  const applyTimelineCategoryColor = (color: string) => {
+    const normalized = normalizeHexColor(color);
+    if (!normalized) return;
+    setDraftCategoryColor(normalized);
+    setDraftCategoryHexInput(normalized);
+    setDraftCategoryHexError('');
+  };
+
+  const handleCategoryHexChange = (value: string) => {
+    setDraftCategoryHexInput(value);
+    const normalized = normalizeHexColor(value);
+    if (normalized) {
+      setDraftCategoryColor(normalized);
+      setDraftCategoryHexError('');
+      return;
+    }
+    if (!value.trim()) {
+      setDraftCategoryHexError('');
+      return;
+    }
+    if (value.trim().length >= 7) {
+      setDraftCategoryHexError('请输入合法的 HEX 颜色，例如 #AABBCC');
+    } else {
+      setDraftCategoryHexError('');
+    }
+  };
+
+  const applyCategoryPickerSelection = () => {
+    const nextCategory = draftCategory.trim() || DEFAULT_MANUAL_CATEGORY;
+    const nextColor = normalizeHexColor(draftCategoryColor) ?? getTimelineCategoryDefaultColor(nextCategory);
+    setManualCategory(nextCategory);
+    setManualCategoryColor(nextColor);
+    setCategoryPickerVisible(false);
+    setDraftCategoryHexError('');
   };
 
   const saveManualRecord = () => {
@@ -261,6 +407,7 @@ export default function ToolsHomeScreen() {
 
     const now = Date.now();
     const category = manualCategory.trim() || DEFAULT_MANUAL_CATEGORY;
+    const categoryColor = normalizeHexColor(manualCategoryColor) ?? getTimelineCategoryDefaultColor(category);
     const note = manualNote.trim();
     const occurredAt = getManualOccurredAt(selectedDate, manualTime);
 
@@ -271,6 +418,7 @@ export default function ToolsHomeScreen() {
         deletedAt: null,
         title,
         category,
+        categoryColor,
         note: note || undefined,
       });
       setManualModalVisible(false);
@@ -288,6 +436,7 @@ export default function ToolsHomeScreen() {
       source: 'manual',
       title,
       category,
+      categoryColor,
       note: note || undefined,
       kind: 'manual',
     });
@@ -295,11 +444,14 @@ export default function ToolsHomeScreen() {
     setManualTitle('');
     setManualTime(getDefaultTimeInputValue());
     setManualCategory(DEFAULT_MANUAL_CATEGORY);
+    const defaultColor = getTimelineCategoryDefaultColor(DEFAULT_MANUAL_CATEGORY);
+    setManualCategoryColor(defaultColor);
     setManualNote('');
     setManualFormError('');
     setManualModalVisible(false);
     setEditingRecord(null);
     setIsTimelineExpanded(true);
+    setCategoryPickerVisible(false);
   };
 
   const confirmDeleteEditingRecord = () => {
@@ -503,45 +655,55 @@ export default function ToolsHomeScreen() {
           ) : (
             <View style={styles.timelineList}>
               <View style={[styles.timelineRail, { backgroundColor: palette.accentSoft }]} />
-              {selectedTimelineRecords.map((record) => (
-                <View key={record.id} style={styles.timelineItem}>
-                  <View style={styles.timelineAxisColumn}>
-                    <ThemedText style={[styles.timelineTimeLabel, { color: palette.muted }]}>{formatTimelineTime(record)}</ThemedText>
-                    <View style={[styles.timelineNode, { backgroundColor: palette.card, borderColor: palette.accentStrong }]} />
-                  </View>
-                  <Pressable
-                    onPress={() => openRecordEditor(record)}
-                    style={({ pressed }) => [
-                      styles.timelineRecordCard,
-                      {
-                        backgroundColor: theme === 'light' ? 'rgba(255,252,246,0.62)' : 'rgba(255,255,255,0.05)',
-                        borderColor: pressed ? palette.accentSoft : theme === 'light' ? 'rgba(216,208,199,0.18)' : 'rgba(255,255,255,0.08)',
-                        opacity: pressed ? 0.92 : 1,
-                      },
-                    ]}>
-                    <View style={styles.timelinePrimaryRow}>
-                      <ThemedText style={styles.timelineTitle}>{record.title}</ThemedText>
+              {selectedTimelineRecords.map((record) => {
+                const categoryMeta = getTimelineCategoryMeta(record.category, record.categoryColor);
+                return (
+                  <View key={record.id} style={styles.timelineItem}>
+                    <View style={styles.timelineAxisColumn}>
+                      <ThemedText style={[styles.timelineTimeLabel, { color: palette.muted }]}>{formatTimelineTime(record)}</ThemedText>
+                      <View style={[styles.timelineNode, { backgroundColor: palette.card, borderColor: palette.accentStrong }]} />
                     </View>
-                    <View style={styles.timelineMetaRow}>
-                      {record.category ? (
-                        <View style={[styles.timelineTag, { backgroundColor: theme === 'light' ? 'rgba(209,187,222,0.08)' : 'rgba(209,187,222,0.08)', borderColor: theme === 'light' ? 'rgba(139,111,161,0.08)' : 'rgba(228,203,242,0.08)' }]}>
-                          <ThemedText style={[styles.timelineTagText, { color: palette.accentStrong }]}>{record.category}</ThemedText>
+                    <Pressable
+                      onPress={() => openRecordEditor(record)}
+                      style={({ pressed }) => [
+                        styles.timelineRecordCard,
+                        {
+                          backgroundColor: theme === 'light' ? 'rgba(255,252,246,0.62)' : 'rgba(255,255,255,0.05)',
+                          borderColor: pressed ? palette.accentSoft : theme === 'light' ? 'rgba(216,208,199,0.18)' : 'rgba(255,255,255,0.08)',
+                          opacity: pressed ? 0.92 : 1,
+                        },
+                      ]}>
+                      <View style={styles.timelinePrimaryRow}>
+                        <ThemedText style={styles.timelineTitle}>{record.title}</ThemedText>
+                      </View>
+                      <View style={styles.timelineMetaRow}>
+                        {record.category ? (
+                          <View
+                            style={[
+                              styles.timelineTag,
+                              {
+                                backgroundColor: categoryMeta.backgroundColor,
+                                borderColor: categoryMeta.borderColor,
+                              },
+                            ]}>
+                            <ThemedText style={[styles.timelineTagText, { color: categoryMeta.textColor }]}>{record.category}</ThemedText>
+                          </View>
+                        ) : null}
+                        <View style={[styles.timelineTag, { backgroundColor: theme === 'light' ? 'rgba(255,255,255,0.46)' : 'rgba(255,255,255,0.04)', borderColor: theme === 'light' ? 'rgba(216,208,199,0.14)' : 'rgba(255,255,255,0.08)' }]}>
+                          <ThemedText style={[styles.timelineTagText, { color: palette.muted }]}>{SOURCE_LABELS[record.source]}</ThemedText>
+                        </View>
+                      </View>
+                      {record.note ? (
+                        <View style={[styles.timelineNoteShell, { backgroundColor: theme === 'light' ? 'rgba(247,240,234,0.42)' : 'rgba(255,255,255,0.03)' }]}>
+                          <ThemedText numberOfLines={2} style={[styles.timelineNote, { color: palette.muted }]}>
+                            {record.note}
+                          </ThemedText>
                         </View>
                       ) : null}
-                      <View style={[styles.timelineTag, { backgroundColor: theme === 'light' ? 'rgba(255,255,255,0.46)' : 'rgba(255,255,255,0.04)', borderColor: theme === 'light' ? 'rgba(216,208,199,0.14)' : 'rgba(255,255,255,0.08)' }]}>
-                        <ThemedText style={[styles.timelineTagText, { color: palette.muted }]}>{SOURCE_LABELS[record.source]}</ThemedText>
-                      </View>
-                    </View>
-                    {record.note ? (
-                      <View style={[styles.timelineNoteShell, { backgroundColor: theme === 'light' ? 'rgba(247,240,234,0.42)' : 'rgba(255,255,255,0.03)' }]}>
-                        <ThemedText numberOfLines={2} style={[styles.timelineNote, { color: palette.muted }]}>
-                          {record.note}
-                        </ThemedText>
-                      </View>
-                    ) : null}
-                  </Pressable>
-                </View>
-              ))}
+                    </Pressable>
+                  </View>
+                );
+              })}
             </View>
           )}
         </SectionCard>
@@ -678,29 +840,41 @@ export default function ToolsHomeScreen() {
                 />
               </View>
 
-              <View style={styles.formRow}>
-                <View style={[styles.formGroup, styles.formRowItem]}>
-                  <ThemedText style={[styles.formLabel, { color: palette.muted }]}>时间</ThemedText>
-                  <TextInput
-                    value={manualTime}
-                    onChangeText={setManualTime}
-                    placeholder="09:00"
-                    placeholderTextColor={palette.muted}
-                    style={[styles.formInput, { borderColor: palette.border, color: palette.text, backgroundColor: palette.input }]}
-                    keyboardType="numbers-and-punctuation"
-                  />
-                </View>
-                <View style={[styles.formGroup, styles.formRowItem]}>
-                  <ThemedText style={[styles.formLabel, { color: palette.muted }]}>分类</ThemedText>
-                  <TextInput
-                    value={manualCategory}
-                    onChangeText={setManualCategory}
-                    placeholder={DEFAULT_MANUAL_CATEGORY}
-                    placeholderTextColor={palette.muted}
-                    style={[styles.formInput, { borderColor: palette.border, color: palette.text, backgroundColor: palette.input }]}
-                    returnKeyType="done"
-                  />
-                </View>
+              <View style={styles.formGroup}>
+                <ThemedText style={[styles.formLabel, { color: palette.muted }]}>时间</ThemedText>
+                <TextInput
+                  value={manualTime}
+                  onChangeText={setManualTime}
+                  placeholder="09:00"
+                  placeholderTextColor={palette.muted}
+                  style={[styles.formInput, { borderColor: palette.border, color: palette.text, backgroundColor: palette.input }]}
+                  keyboardType="numbers-and-punctuation"
+                />
+              </View>
+
+              <View style={styles.formGroup}>
+                <ThemedText style={[styles.formLabel, { color: palette.muted }]}>事件分类</ThemedText>
+                <Pressable
+                  onPress={openCategoryPicker}
+                  style={({ pressed }) => [
+                    styles.categorySummary,
+                    {
+                      borderColor: manualCategoryMeta.borderColor,
+                      backgroundColor: theme === 'light' ? 'rgba(255,250,244,0.82)' : 'rgba(255,255,255,0.04)',
+                      opacity: pressed ? 0.9 : 1,
+                    },
+                  ]}>
+                  <View style={styles.categorySummaryMain}>
+                    <View style={[styles.categoryPreviewBadge, { backgroundColor: manualCategoryMeta.backgroundColor, borderColor: manualCategoryMeta.borderColor }]}>
+                      <View style={[styles.categoryPreviewDot, { backgroundColor: manualCategoryMeta.color }]} />
+                    </View>
+                    <View style={styles.categorySummaryTextWrap}>
+                      <ThemedText style={styles.categorySummaryTitle}>{manualCategoryName}</ThemedText>
+                      <ThemedText style={[styles.categorySummaryHint, { color: palette.muted }]}>当前颜色已选，点击更改分类或颜色</ThemedText>
+                    </View>
+                  </View>
+                  <ThemedText style={[styles.categorySummaryAction, { color: palette.accentStrong }]}>更改</ThemedText>
+                </Pressable>
               </View>
 
               <View style={styles.formGroup}>
@@ -731,6 +905,149 @@ export default function ToolsHomeScreen() {
               ) : null}
               <AppButton title="取消" variant="outline" onPress={closeManualRecordModal} style={styles.sheetAction} />
               <AppButton title="保存" onPress={saveManualRecord} style={styles.sheetAction} />
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      <Modal visible={categoryPickerVisible} transparent animationType="slide" onRequestClose={closeCategoryPicker}>
+        <Pressable style={[styles.sheetMask, { backgroundColor: palette.overlay }]} onPress={closeCategoryPicker}>
+          <Pressable style={styles.sheetMaskInner} />
+        </Pressable>
+        <KeyboardAvoidingView behavior={Platform.select({ ios: 'padding', android: undefined })} style={styles.sheetKav}>
+          <View style={[styles.pickerSheet, { backgroundColor: palette.card, borderColor: palette.border }]}>
+            <View style={styles.sheetTop}>
+              <View style={[styles.sheetHandle, { backgroundColor: palette.border }]} />
+            </View>
+
+            <View style={styles.sheetTitleWrap}>
+              <ThemedText style={[styles.briefMeta, { color: reportAccent }]}>CATEGORY PICKER</ThemedText>
+              <ThemedText style={styles.sheetTitle}>分类与颜色</ThemedText>
+              <ThemedText style={[styles.sectionSub, { color: palette.muted }]}>先选分类，再微调颜色</ThemedText>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.pickerForm}>
+              <View style={[styles.currentColorCard, { borderColor: draftCategoryMeta.borderColor, backgroundColor: theme === 'light' ? 'rgba(255,250,244,0.72)' : 'rgba(255,255,255,0.03)' }]}>
+                <View style={[styles.currentColorPreview, { backgroundColor: draftCategoryMeta.backgroundColor, borderColor: draftCategoryMeta.borderColor }]}>
+                  <View style={[styles.currentColorCore, { backgroundColor: draftCategoryMeta.color }]} />
+                </View>
+                <View style={styles.currentColorTextWrap}>
+                  <ThemedText style={styles.currentColorTitle}>{draftCategoryName}</ThemedText>
+                  <ThemedText style={[styles.currentColorHex, { color: palette.muted }]}>{draftCategoryColor}</ThemedText>
+                </View>
+              </View>
+
+              <View style={styles.formGroup}>
+                <ThemedText style={[styles.formLabel, { color: palette.muted }]}>常用分类</ThemedText>
+                <View style={styles.categoryChipRow}>
+                  {TIMELINE_CATEGORY_OPTIONS.map((category) => {
+                    const categoryMeta = getTimelineCategoryMeta(category);
+                    const selected = draftCategoryName === category;
+                    return (
+                      <AppChip
+                        key={category}
+                        title={category}
+                        selected={selected}
+                        onPress={() => applyTimelineCategory(category)}
+                        style={{
+                          backgroundColor: selected ? categoryMeta.backgroundColor : 'transparent',
+                          borderColor: categoryMeta.borderColor,
+                        }}
+                        textStyle={{ color: categoryMeta.textColor }}
+                      />
+                    );
+                  })}
+                </View>
+              </View>
+
+              <View style={styles.formGroup}>
+                <ThemedText style={[styles.formLabel, { color: palette.muted }]}>自定义分类名</ThemedText>
+                <TextInput
+                  value={draftCategory}
+                  onChangeText={setDraftCategory}
+                  placeholder={DEFAULT_MANUAL_CATEGORY}
+                  placeholderTextColor={palette.muted}
+                  style={[styles.formInput, { borderColor: palette.border, color: palette.text, backgroundColor: palette.input }]}
+                  returnKeyType="done"
+                />
+              </View>
+
+              <View style={styles.formGroup}>
+                <ThemedText style={[styles.formLabel, { color: palette.muted }]}>推荐色</ThemedText>
+                <View style={styles.colorSwatchGrid}>
+                  {TIMELINE_RECOMMENDED_COLORS.map((color) => {
+                    const selected = normalizeHexColor(draftCategoryColor) === normalizeHexColor(color);
+                    return (
+                      <Pressable
+                        key={color}
+                        onPress={() => applyTimelineCategoryColor(color)}
+                        style={({ pressed }) => [
+                          styles.recommendedSwatch,
+                          {
+                            backgroundColor: color,
+                            borderColor: selected ? palette.text : hexToRgba(color, 0.42),
+                            borderWidth: selected ? 2.5 : 1.5,
+                            opacity: pressed ? 0.88 : 1,
+                          },
+                        ]}
+                      />
+                    );
+                  })}
+                </View>
+              </View>
+
+              <View style={styles.formGroup}>
+                <ThemedText style={[styles.formLabel, { color: palette.muted }]}>完整色板</ThemedText>
+                <View style={styles.paletteGrid}>
+                  {TIMELINE_COLOR_PALETTE.map((row, rowIndex) => (
+                    <View key={`palette-row-${rowIndex}`} style={styles.paletteRow}>
+                      {row.map((color) => {
+                        const selected = normalizeHexColor(draftCategoryColor) === normalizeHexColor(color);
+                        return (
+                          <Pressable
+                            key={color}
+                            onPress={() => applyTimelineCategoryColor(color)}
+                            style={({ pressed }) => [
+                              styles.paletteSwatch,
+                              {
+                                backgroundColor: color,
+                                borderColor: selected ? palette.text : hexToRgba(color, 0.36),
+                                borderWidth: selected ? 2.5 : 1,
+                                opacity: pressed ? 0.88 : 1,
+                              },
+                            ]}>
+                            {selected ? <View style={[styles.paletteSwatchInner, { borderColor: '#FFFFFF' }]} /> : null}
+                          </Pressable>
+                        );
+                      })}
+                    </View>
+                  ))}
+                </View>
+              </View>
+
+              <View style={styles.formGroup}>
+                <ThemedText style={[styles.formLabel, { color: palette.muted }]}>HEX 颜色</ThemedText>
+                <TextInput
+                  value={draftCategoryHexInput}
+                  onChangeText={handleCategoryHexChange}
+                  placeholder="#AABBCC"
+                  placeholderTextColor={palette.muted}
+                  autoCapitalize="characters"
+                  autoCorrect={false}
+                  style={[styles.formInput, { borderColor: draftCategoryHexError ? palette.danger : palette.border, color: palette.text, backgroundColor: palette.input }]}
+                  returnKeyType="done"
+                />
+                {draftCategoryHexError ? (
+                  <ThemedText style={[styles.formHint, { color: palette.danger }]}>{draftCategoryHexError}</ThemedText>
+                ) : (
+                  <ThemedText style={[styles.formHint, { color: palette.muted }]}>输入合法 HEX 后会立即应用，不合法时保留当前颜色。</ThemedText>
+                )}
+              </View>
+            </ScrollView>
+
+            <View style={styles.sheetActions}>
+              <AppButton title="取消" variant="outline" onPress={closeCategoryPicker} style={styles.sheetAction} />
+              <AppButton title="应用" onPress={applyCategoryPickerSelection} style={styles.sheetAction} />
             </View>
           </View>
         </KeyboardAvoidingView>
@@ -886,6 +1203,20 @@ const styles = StyleSheet.create({
     shadowRadius: 18,
     elevation: 4,
   },
+  pickerSheet: {
+    borderWidth: 1,
+    borderTopLeftRadius: uiTokens.radius.xl,
+    borderTopRightRadius: uiTokens.radius.xl,
+    paddingHorizontal: uiTokens.spacing.lg,
+    paddingTop: uiTokens.spacing.md,
+    paddingBottom: uiTokens.spacing.xl,
+    maxHeight: '82%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -8 },
+    shadowOpacity: 0.08,
+    shadowRadius: 18,
+    elevation: 4,
+  },
   sheetTop: { alignItems: 'center', justifyContent: 'center', height: 24 },
   sheetHandle: { width: 44, height: 5, borderRadius: uiTokens.radius.pill },
   sheetTitleWrap: { alignItems: 'center', gap: 3, marginBottom: uiTokens.spacing.md },
@@ -893,9 +1224,74 @@ const styles = StyleSheet.create({
   sourcePill: { borderWidth: 1, borderRadius: uiTokens.radius.pill, paddingHorizontal: uiTokens.spacing.sm, paddingVertical: 3, marginTop: uiTokens.spacing.xs },
   sourcePillText: { fontSize: 11, lineHeight: 14, fontWeight: '900' },
   manualForm: { gap: uiTokens.spacing.md, paddingBottom: uiTokens.spacing.sm },
+  pickerForm: { gap: uiTokens.spacing.md, paddingBottom: uiTokens.spacing.sm },
   formGroup: { gap: uiTokens.spacing.sm },
   formRow: { flexDirection: 'row', gap: uiTokens.spacing.sm },
   formRowItem: { flex: 1 },
+  categoryChipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: uiTokens.spacing.xs },
+  categorySummary: {
+    minHeight: 58,
+    borderWidth: 1.5,
+    borderRadius: uiTokens.radius.lg,
+    paddingHorizontal: uiTokens.spacing.md,
+    paddingVertical: uiTokens.spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: uiTokens.spacing.md,
+  },
+  categorySummaryMain: { flexDirection: 'row', alignItems: 'center', gap: uiTokens.spacing.sm, flex: 1, minWidth: 0 },
+  categoryPreviewBadge: {
+    width: 34,
+    height: 34,
+    borderRadius: uiTokens.radius.md,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  categoryPreviewDot: { width: 14, height: 14, borderRadius: uiTokens.radius.pill },
+  categorySummaryTextWrap: { flex: 1, minWidth: 0, gap: 2 },
+  categorySummaryTitle: { fontSize: 15, lineHeight: 20, fontWeight: '900' },
+  categorySummaryHint: { fontSize: 12, lineHeight: 16, fontWeight: '800' },
+  categorySummaryAction: { fontSize: 12, lineHeight: 16, fontWeight: '900' },
+  currentColorCard: {
+    borderWidth: 1.5,
+    borderRadius: uiTokens.radius.lg,
+    paddingHorizontal: uiTokens.spacing.md,
+    paddingVertical: uiTokens.spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: uiTokens.spacing.md,
+  },
+  currentColorPreview: {
+    width: 42,
+    height: 42,
+    borderRadius: uiTokens.radius.md,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  currentColorCore: { width: 20, height: 20, borderRadius: uiTokens.radius.pill },
+  currentColorTextWrap: { gap: 2, flex: 1 },
+  currentColorTitle: { fontSize: 14, lineHeight: 18, fontWeight: '900' },
+  currentColorHex: { fontSize: 12, lineHeight: 16, fontWeight: '800' },
+  colorSwatchGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: uiTokens.spacing.sm },
+  recommendedSwatch: { width: 34, height: 34, borderRadius: uiTokens.radius.md },
+  paletteGrid: { gap: uiTokens.spacing.xs },
+  paletteRow: { flexDirection: 'row', gap: uiTokens.spacing.xs },
+  paletteSwatch: {
+    width: 34,
+    height: 34,
+    borderRadius: uiTokens.radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  paletteSwatchInner: {
+    width: 12,
+    height: 12,
+    borderRadius: uiTokens.radius.pill,
+    borderWidth: 2,
+  },
   formLabel: uiTokens.typography.chip,
   formInput: {
     minHeight: 44,
@@ -906,6 +1302,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '800',
   },
+  formHint: { fontSize: 12, lineHeight: 16, fontWeight: '800' },
   noteInput: { minHeight: 82 },
   formError: { fontSize: 12, lineHeight: 17, fontWeight: '900' },
   sheetActions: { flexDirection: 'row', gap: uiTokens.spacing.sm, marginTop: uiTokens.spacing.sm, paddingTop: uiTokens.spacing.sm },

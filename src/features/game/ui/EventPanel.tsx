@@ -4,10 +4,10 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useThemeColor } from '@/hooks/use-theme-color';
-import type { Choice, EventNode } from '@/features/game/engine/types';
+import type { Choice, NarrativeEventNode } from '@/features/game/engine/types';
 
 export type EventPanelProps = {
-  event: EventNode;
+  event: NarrativeEventNode;
   choices: Choice[];
   onSelectChoice: (choice: Choice) => void;
 };
@@ -55,4 +55,3 @@ const styles = StyleSheet.create({
   option: { borderWidth: 1, borderRadius: 14, paddingVertical: 12, paddingHorizontal: 12 },
   optionText: { fontSize: 14, lineHeight: 18, fontWeight: '800' },
 });
-

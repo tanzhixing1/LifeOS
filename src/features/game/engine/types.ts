@@ -23,12 +23,47 @@ export type Choice = {
   next?: { eventId?: string; locationId?: string };
 };
 
-export type EventNode = {
+export type EventPresentation = 'text' | 'visualNovel';
+
+export type BaseEventNode = {
   id: string;
   title: string;
-  paragraphs: string[];
   options: Choice[];
+  presentation?: EventPresentation;
 };
+
+export type NarrativeEventNode = BaseEventNode & {
+  presentation?: 'text';
+  paragraphs: string[];
+};
+
+export type DialogueLine = {
+  id?: string;
+  speakerId?: string;
+  speakerName?: string;
+  text: string;
+  expression?: string;
+  spriteId?: string;
+  backgroundId?: string;
+};
+
+export type CharacterSprite = {
+  id: string;
+  name: string;
+  defaultExpression?: string;
+  position?: 'left' | 'center' | 'right';
+  scale?: number;
+};
+
+export type VisualNovelEventNode = BaseEventNode & {
+  presentation: 'visualNovel';
+  backgroundId?: string;
+  characters?: CharacterSprite[];
+  dialogue: DialogueLine[];
+  paragraphs?: string[];
+};
+
+export type EventNode = NarrativeEventNode | VisualNovelEventNode;
 
 export type PlayerState = {
   attrs: Record<string, number>;
@@ -41,4 +76,3 @@ export type ContentPack = {
   events: EventNode[];
   map?: MapNode[];
 };
-

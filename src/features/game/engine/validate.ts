@@ -45,7 +45,14 @@ function validateChoice(errors: string[], eventId: string, choice: Choice, choic
 function validateEvent(errors: string[], event: EventNode) {
   if (!event.id) push(errors, `[event] missing id`);
   if (!event.title) push(errors, `[${event.id}] missing title`);
-  if (!Array.isArray(event.paragraphs) || event.paragraphs.length === 0) push(errors, `[${event.id}] paragraphs must be non-empty`);
+  if (event.presentation === 'visualNovel') {
+    if (!Array.isArray(event.dialogue) || event.dialogue.length === 0) push(errors, `[${event.id}] dialogue must be non-empty`);
+    for (const [i, line] of (event.dialogue ?? []).entries()) {
+      if (!line.text) push(errors, `[${event.id}] dialogue[${i}] missing text`);
+    }
+  } else if (!Array.isArray(event.paragraphs) || event.paragraphs.length === 0) {
+    push(errors, `[${event.id}] paragraphs must be non-empty`);
+  }
   if (!Array.isArray(event.options)) push(errors, `[${event.id}] options must be array`);
 
   for (const [i, opt] of (event.options ?? []).entries()) {
@@ -100,4 +107,3 @@ export function validateContentPack(pack: ContentPack): { ok: boolean; errors: s
 
   return { ok: errors.length === 0, errors };
 }
-
