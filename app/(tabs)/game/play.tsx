@@ -4,10 +4,11 @@ import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import demoPackJson from '@/features/game/content/demo/events.json';
 import { executeChoice, getAvailableChoices } from '@/features/game/engine/executor';
+import { formatGameTime } from '@/features/game/engine/time';
 import type { ContentPack, EventNode } from '@/features/game/engine/types';
 import { validateContentPack } from '@/features/game/engine/validate';
-import demoPackJson from '@/features/game/content/demo/events.json';
 import { EventRenderer } from '@/features/game/ui/EventRenderer';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { useGameStore } from '@/stores';
@@ -50,15 +51,20 @@ export default function GamePlayScreen() {
           <ThemedText style={styles.bigTitle}>事件</ThemedText>
           <View style={{ width: 40 }} />
         </View>
+        <View style={[styles.statusBar, { backgroundColor: cardBg, borderColor: cardBorder }]}>
+          <ThemedText style={[styles.statusText, { color: mutedText }]}>{formatGameTime(player.gameTime)}</ThemedText>
+          <ThemedText style={[styles.statusText, { color: mutedText }]}>疲劳 {player.vitals.fatigue}</ThemedText>
+          <ThemedText style={[styles.statusText, { color: mutedText }]}>金钱 {player.wallet.money}G</ThemedText>
+        </View>
       </View>
 
       {!validation.ok ? (
         <View style={[styles.card, { backgroundColor: cardBg, borderColor: cardBorder }]}>
           <ThemedText style={styles.cardTitle}>内容包校验失败</ThemedText>
           <ScrollView style={{ maxHeight: 260 }}>
-            {validation.errors.map((e, i) => (
-              <ThemedText key={`err.${i}`} style={[styles.errorText, { color: mutedText }]}>
-                {e}
+            {validation.errors.map((error, index) => (
+              <ThemedText key={`err.${index}`} style={[styles.errorText, { color: mutedText }]}>
+                {error}
               </ThemedText>
             ))}
           </ScrollView>
@@ -106,6 +112,17 @@ const styles = StyleSheet.create({
   headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   bigTitle: { fontSize: 26, fontWeight: '900', letterSpacing: 0.2, textAlign: 'center' },
   backText: { fontSize: 13, lineHeight: 16, fontWeight: '900', width: 40 },
+  statusBar: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  statusText: { fontSize: 11, lineHeight: 14, fontWeight: '900' },
   body: { gap: 12, paddingBottom: 18 },
   card: { borderWidth: 1, borderRadius: 18, padding: 14, gap: 10 },
   cardTitle: { fontSize: 16, lineHeight: 20, fontWeight: '900' },

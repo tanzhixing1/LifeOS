@@ -142,7 +142,7 @@
           ],
           "next": { "eventId": "demo_end_good" }
         },
-        { "text": "转身回家", "next": { "eventId": "demo_room", "locationId": "room" } }
+        { "text": "转身回家", "next": { "eventId": "demo_room", "locationId": "home" } }
       ]
     },
     {
@@ -165,8 +165,8 @@
     }
   ],
   "map": [
-    { "id": "room", "name": "房间", "neighbors": ["street"] },
-    { "id": "street", "name": "街角", "neighbors": ["room", "market"] },
+    { "id": "home", "name": "房间", "neighbors": ["street"] },
+    { "id": "street", "name": "街角", "neighbors": ["home", "market"] },
     { "id": "market", "name": "小市集", "neighbors": ["street"] }
   ]
 }

@@ -4,6 +4,7 @@ import { Animated, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
+import { formatGameTime } from '@/features/game/engine/time';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { useGameStore } from '@/stores';
 
@@ -16,11 +17,11 @@ const ATTRIBUTE_ROWS = [
   { key: 'sanity', label: '理智' },
   { key: 'stamina', label: '体力' },
   { key: 'focus', label: '专注' },
-  { key: 'intelligence', label: '智识' },
   { key: 'charisma', label: '魅力' },
-  { key: 'proficiency', label: '熟练度' },
-  { key: 'friendship', label: '友情' },
+  { key: 'intelligence', label: '智慧' },
+  { key: 'proficiency', label: '熟练' },
   { key: 'family', label: '家庭' },
+  { key: 'friendship', label: '友情' },
 ] as const;
 
 export function GameGlobalMenu() {
@@ -33,8 +34,15 @@ export function GameGlobalMenu() {
   const [attrsVisible, setAttrsVisible] = useState(false);
   const [sideDockOpen, setSideDockOpen] = useState(false);
 
-  const attrs = useGameStore((s) => s.player.attrs);
-  const attrRows = ATTRIBUTE_ROWS.map((row) => ({ ...row, value: attrs[row.key] ?? 0 }));
+  const player = useGameStore((s) => s.player);
+  const attrRows = ATTRIBUTE_ROWS.map((row) => ({ ...row, value: player.attrs[row.key] ?? 0 }));
+  const lifeRows = [
+    { key: 'bodyStatus', label: '身体状态', value: player.vitals.bodyStatus },
+    { key: 'fatigue', label: '疲劳', value: player.vitals.fatigue },
+    { key: 'intoxication', label: '醉酒', value: player.vitals.intoxication },
+    { key: 'money', label: '金钱', value: `${player.wallet.money}G` },
+    { key: 'gameTime', label: '游戏时间', value: formatGameTime(player.gameTime) },
+  ];
 
   useEffect(() => {
     Animated.timing(slideAnim, {
@@ -95,7 +103,7 @@ export function GameGlobalMenu() {
               styles.sideDockButton,
               { borderColor: cardBorder, backgroundColor: pressed ? 'rgba(209,187,222,0.22)' : 'rgba(209,187,222,0.10)' },
             ]}>
-            <ThemedText style={styles.sideDockIcon}>📖</ThemedText>
+            <ThemedText style={styles.sideDockIcon}>📝</ThemedText>
             <ThemedText style={[styles.sideDockLabel, { color: mutedText }]}>日志</ThemedText>
           </Pressable>
         </View>
@@ -123,16 +131,33 @@ export function GameGlobalMenu() {
               <View style={[styles.panelLine, { backgroundColor: cardBorder }]} />
             </View>
             <ThemedText style={styles.panelTitle}>魔女状态手账</ThemedText>
-            <ThemedText style={[styles.panelSubtitle, { color: mutedText }]}>现实努力换来的数值，先别乱花。</ThemedText>
+            <ThemedText style={[styles.panelSubtitle, { color: mutedText }]}>长期能力和短期生活状态分开看，会更清楚。</ThemedText>
 
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.attrGrid}>
-              {attrRows.map((attr) => (
-                <View key={attr.key} style={[styles.attrCell, { borderColor: cardBorder, backgroundColor: 'rgba(255,255,255,0.24)' }]}>
-                  <ThemedText style={[styles.attrLabel, { color: mutedText }]}>{attr.label}</ThemedText>
-                  <ThemedText style={styles.attrValue}>{attr.value}</ThemedText>
-                  <ThemedText style={[styles.attrKey, { color: mutedText }]}>{attr.key}</ThemedText>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.panelContent}>
+              <View style={styles.section}>
+                <ThemedText style={[styles.sectionTitle, { color: accent }]}>魔女属性</ThemedText>
+                <View style={styles.attrGrid}>
+                  {attrRows.map((attr) => (
+                    <View key={attr.key} style={[styles.attrCell, { borderColor: cardBorder, backgroundColor: 'rgba(255,255,255,0.24)' }]}>
+                      <ThemedText style={[styles.attrLabel, { color: mutedText }]}>{attr.label}</ThemedText>
+                      <ThemedText style={styles.attrValue}>{attr.value}</ThemedText>
+                      <ThemedText style={[styles.attrKey, { color: mutedText }]}>{attr.key}</ThemedText>
+                    </View>
+                  ))}
                 </View>
-              ))}
+              </View>
+
+              <View style={styles.section}>
+                <ThemedText style={[styles.sectionTitle, { color: accent }]}>生活状态</ThemedText>
+                <View style={styles.lifeList}>
+                  {lifeRows.map((row) => (
+                    <View key={row.key} style={[styles.lifeRow, { borderColor: cardBorder, backgroundColor: 'rgba(255,255,255,0.24)' }]}>
+                      <ThemedText style={[styles.lifeLabel, { color: mutedText }]}>{row.label}</ThemedText>
+                      <ThemedText style={styles.lifeValue}>{row.value}</ThemedText>
+                    </View>
+                  ))}
+                </View>
+              </View>
             </ScrollView>
 
             <Pressable
@@ -205,7 +230,6 @@ const styles = StyleSheet.create({
     elevation: 14,
   },
   sideDockHandleText: { fontSize: 18, lineHeight: 20, fontWeight: '900' },
-
   modalMask: { flex: 1, backgroundColor: 'rgba(0,0,0,0.38)', alignItems: 'center', justifyContent: 'center', padding: 18 },
   attrPanel: { width: '100%', maxHeight: '82%', borderWidth: 1.5, borderRadius: 20, padding: 14, gap: 10 },
   panelOrnamentRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
@@ -213,11 +237,27 @@ const styles = StyleSheet.create({
   panelKicker: { fontSize: 10, lineHeight: 12, fontWeight: '900', letterSpacing: 1.2 },
   panelTitle: { fontSize: 19, lineHeight: 24, fontWeight: '900', textAlign: 'center' },
   panelSubtitle: { fontSize: 12, lineHeight: 16, fontWeight: '800', textAlign: 'center' },
-  attrGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, paddingVertical: 4 },
+  panelContent: { gap: 14, paddingVertical: 4 },
+  section: { gap: 10 },
+  sectionTitle: { fontSize: 13, lineHeight: 16, fontWeight: '900' },
+  attrGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   attrCell: { width: '48%', minHeight: 74, borderWidth: 1, borderRadius: 14, padding: 10, justifyContent: 'space-between' },
   attrLabel: { fontSize: 12, lineHeight: 15, fontWeight: '900' },
   attrValue: { fontSize: 22, lineHeight: 26, fontWeight: '900', textAlign: 'right' },
   attrKey: { fontSize: 10, lineHeight: 12, fontWeight: '800', textAlign: 'right' },
+  lifeList: { gap: 8 },
+  lifeRow: {
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  lifeLabel: { fontSize: 12, lineHeight: 15, fontWeight: '900' },
+  lifeValue: { flex: 1, fontSize: 13, lineHeight: 17, fontWeight: '900', textAlign: 'right' },
   closeBtn: { height: 42, borderWidth: 1.5, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginTop: 2 },
   closeBtnText: { color: '#fff', fontSize: 14, lineHeight: 18, fontWeight: '900' },
 });

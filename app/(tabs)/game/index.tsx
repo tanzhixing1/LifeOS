@@ -4,6 +4,7 @@ import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { formatGameTime } from '@/features/game/engine/time';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { useGameStore } from '@/stores';
 
@@ -19,10 +20,10 @@ export default function GameHomeScreen() {
   const hudMuted = useThemeColor({ light: '#7A756F', dark: '#A1A1AA' }, 'text');
   const hudAccent = useThemeColor({ light: '#6366F1', dark: '#6366F1' }, 'tint');
 
-  const attrs = useGameStore((s) => s.player.attrs);
-  const mana = attrs.mana ?? 0;
-  const hp = attrs.hp ?? 0;
-  const sanity = attrs.sanity ?? 0;
+  const player = useGameStore((s) => s.player);
+  const mana = player.attrs.mana ?? 0;
+  const hp = player.attrs.hp ?? 0;
+  const sanity = player.attrs.sanity ?? 0;
 
   function confirmResetGame() {
     Alert.alert('开始新旅程？', '这会重置当前游戏进度和属性，但不会影响现实任务记录。', [
@@ -49,6 +50,17 @@ export default function GameHomeScreen() {
         <View style={[styles.hud, { backgroundColor: hudBg, borderColor: hudBorder }]}>
           <View style={styles.hudHeader}>
             <ThemedText style={[styles.hudHeaderText, { color: hudMuted }]}>Witch Status</ThemedText>
+          </View>
+          <View style={styles.quickStatusRow}>
+            <View style={[styles.quickStatusPill, { borderColor: hudBorder }]}>
+              <ThemedText style={[styles.quickStatusText, { color: hudMuted }]}>{formatGameTime(player.gameTime)}</ThemedText>
+            </View>
+            <View style={[styles.quickStatusPill, { borderColor: hudBorder }]}>
+              <ThemedText style={[styles.quickStatusText, { color: hudMuted }]}>疲劳 {player.vitals.fatigue}</ThemedText>
+            </View>
+            <View style={[styles.quickStatusPill, { borderColor: hudBorder }]}>
+              <ThemedText style={[styles.quickStatusText, { color: hudMuted }]}>金钱 {player.wallet.money}G</ThemedText>
+            </View>
           </View>
           <View style={styles.hudRow}>
             <View style={styles.hudItem}>
@@ -99,9 +111,7 @@ export default function GameHomeScreen() {
               style={({ pressed }) => [styles.primaryBtn, { backgroundColor: accent, opacity: pressed ? 0.92 : 1 }]}>
               <ThemedText style={styles.primaryBtnText}>进入地图</ThemedText>
             </Pressable>
-            <Pressable
-              onPress={confirmResetGame}
-              style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1 }]}>
+            <Pressable onPress={confirmResetGame} style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1 }]}>
               <ThemedText style={[styles.linkText, { color: mutedText }]}>开始新旅程</ThemedText>
             </Pressable>
           </View>
@@ -117,10 +127,12 @@ const styles = StyleSheet.create({
   header: { paddingTop: 4, paddingBottom: 12, gap: 8 },
   bigTitle: { fontSize: 28, fontWeight: '900', letterSpacing: 0.2, textAlign: 'center' },
   subtitle: { fontSize: 13, lineHeight: 18, fontWeight: '700', textAlign: 'center' },
-
   hud: { borderWidth: 1, borderRadius: 18, padding: 12, marginBottom: 12 },
   hudHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
   hudHeaderText: { fontSize: 11, lineHeight: 14, fontWeight: '900', letterSpacing: 0.8 },
+  quickStatusRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 10 },
+  quickStatusPill: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 },
+  quickStatusText: { fontSize: 11, lineHeight: 14, fontWeight: '900' },
   hudRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   hudItem: { flexGrow: 1, flexBasis: 0, minWidth: 92, gap: 8 },
   hudTop: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
@@ -128,7 +140,6 @@ const styles = StyleSheet.create({
   hudValue: { fontSize: 14, lineHeight: 18, fontWeight: '900' },
   hudBar: { height: 8, borderRadius: 999 },
   hudBarFill: { height: 8, borderRadius: 999 },
-
   parchment: { borderWidth: 1, borderRadius: 18, padding: 14, gap: 14 },
   parchmentHint: { fontSize: 12, lineHeight: 16, fontWeight: '800', textAlign: 'center' },
   mapNode: { borderWidth: 1.5, borderRadius: 18, paddingVertical: 22, paddingHorizontal: 14, alignItems: 'center', gap: 6 },

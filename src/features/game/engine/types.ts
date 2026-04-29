@@ -24,6 +24,14 @@ export type GameLocation = {
   npcIds?: string[];
   shopId?: string;
   randomEventIds?: string[];
+  openHours?: OpenHours;
+};
+
+export type OpenHours = {
+  startHour: number;
+  startMinute?: number;
+  endHour: number;
+  endMinute?: number;
 };
 
 export type Effect =
@@ -85,6 +93,25 @@ export type PlayerState = {
   attrs: Record<string, number>;
   flags: Record<string, boolean>;
   location?: string;
+  gameTime: GameTime;
+  vitals: PlayerVitals;
+  wallet: PlayerWallet;
+};
+
+export type GameTime = {
+  day: number;
+  hour: number;
+  minute: number;
+};
+
+export type PlayerVitals = {
+  bodyStatus: number;
+  fatigue: number;
+  intoxication: number;
+};
+
+export type PlayerWallet = {
+  money: number;
 };
 
 export type ContentPack = {

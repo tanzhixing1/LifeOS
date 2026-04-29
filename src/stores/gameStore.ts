@@ -1,7 +1,8 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-import type { PlayerState } from '@/features/game/engine/types';
+import { addMinutesToGameTime, normalizeGameTime } from '@/features/game/engine/time';
+import type { GameTime, PlayerState, PlayerVitals, PlayerWallet } from '@/features/game/engine/types';
 import { zustandStorage } from '@/services/storage/zustandStorage';
 
 export const DEFAULT_ATTRS = {
@@ -17,7 +18,23 @@ export const DEFAULT_ATTRS = {
   friendship: 0,
 } as const;
 
-const DEFAULT_LOCATION = 'room';
+const DEFAULT_LOCATION = 'home';
+
+export const DEFAULT_GAME_TIME: GameTime = {
+  day: 1,
+  hour: 7,
+  minute: 0,
+};
+
+export const DEFAULT_VITALS: PlayerVitals = {
+  bodyStatus: 100,
+  fatigue: 0,
+  intoxication: 0,
+};
+
+export const DEFAULT_WALLET: PlayerWallet = {
+  money: 50,
+};
 
 export type SaveSlot = {
   id: string;
@@ -51,6 +68,9 @@ export type GameActions = {
   setFlag(key: string, value: boolean): void;
   addAttr(key: string, value: number): void;
   addAttrClamped(key: string, value: number): void;
+  setGameTime(time: Partial<GameTime>): void;
+  advanceTime(minutes: number): void;
+  sleepToNextDay(): void;
   addRewardLog(log: RewardLog): void;
   setLocation(locationId: string | undefined): void;
   gotoEvent(eventId: string): void;
@@ -72,11 +92,36 @@ function normalizeAttrs(attrs?: Partial<Record<string, number>> | null): Record<
   return normalized;
 }
 
+function normalizeLocation(location?: string): string {
+  if (location === 'room') return DEFAULT_LOCATION;
+  return typeof location === 'string' && location.length > 0 ? location : DEFAULT_LOCATION;
+}
+
+function normalizeVitals(vitals?: Partial<PlayerVitals> | null): PlayerVitals {
+  return {
+    bodyStatus: typeof vitals?.bodyStatus === 'number' && Number.isFinite(vitals.bodyStatus) ? vitals.bodyStatus : DEFAULT_VITALS.bodyStatus,
+    fatigue: typeof vitals?.fatigue === 'number' && Number.isFinite(vitals.fatigue) ? vitals.fatigue : DEFAULT_VITALS.fatigue,
+    intoxication:
+      typeof vitals?.intoxication === 'number' && Number.isFinite(vitals.intoxication)
+        ? vitals.intoxication
+        : DEFAULT_VITALS.intoxication,
+  };
+}
+
+function normalizeWallet(wallet?: Partial<PlayerWallet> | null): PlayerWallet {
+  return {
+    money: typeof wallet?.money === 'number' && Number.isFinite(wallet.money) ? wallet.money : DEFAULT_WALLET.money,
+  };
+}
+
 function normalizePlayer(player?: Partial<PlayerState> | null): PlayerState {
   return {
     attrs: normalizeAttrs(player?.attrs),
     flags: player?.flags && typeof player.flags === 'object' ? { ...player.flags } : {},
-    location: typeof player?.location === 'string' ? player.location : DEFAULT_LOCATION,
+    location: normalizeLocation(player?.location),
+    gameTime: normalizeGameTime(player?.gameTime),
+    vitals: normalizeVitals(player?.vitals),
+    wallet: normalizeWallet(player?.wallet),
   };
 }
 
@@ -124,11 +169,36 @@ export const useGameStore = create<GameStore>()(
           return { player: { ...s.player, attrs: { ...s.player.attrs, [key]: next } } };
         });
       },
+      setGameTime(time) {
+        set((s) => ({ player: { ...s.player, gameTime: normalizeGameTime({ ...s.player.gameTime, ...time }) } }));
+      },
+      advanceTime(minutes) {
+        set((s) => ({ player: { ...s.player, gameTime: addMinutesToGameTime(s.player.gameTime, minutes) } }));
+      },
+      sleepToNextDay() {
+        set((s) => ({
+          player: {
+            ...s.player,
+            location: DEFAULT_LOCATION,
+            gameTime: {
+              day: s.player.gameTime.day + 1,
+              hour: DEFAULT_GAME_TIME.hour,
+              minute: DEFAULT_GAME_TIME.minute,
+            },
+            vitals: {
+              ...s.player.vitals,
+              bodyStatus: DEFAULT_VITALS.bodyStatus,
+              fatigue: DEFAULT_VITALS.fatigue,
+              intoxication: DEFAULT_VITALS.intoxication,
+            },
+          },
+        }));
+      },
       addRewardLog(log) {
         set((s) => ({ rewardLogs: [log, ...s.rewardLogs].slice(0, 50) }));
       },
       setLocation(locationId) {
-        set((s) => ({ player: { ...s.player, location: locationId } }));
+        set((s) => ({ player: { ...s.player, location: normalizeLocation(locationId) } }));
       },
       gotoEvent(eventId) {
         set({ eventId });
@@ -158,7 +228,7 @@ export const useGameStore = create<GameStore>()(
     }),
     {
       name: 'lifeos.gameStore',
-      version: 4,
+      version: 5,
       storage: zustandStorage,
       partialize: (s) => ({ player: s.player, eventId: s.eventId, saveSlots: s.saveSlots, rewardLogs: s.rewardLogs }),
       migrate: (persistedState: any) => {
