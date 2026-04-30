@@ -295,6 +295,20 @@
           "route": "map"
         }
       ]
+    },
+    {
+      "id": "lilith_reality_chat",
+      "title": "近况",
+      "paragraphs": [
+        "莉莉丝歪了歪头，像是从很远的地方听见了现实的回声。"
+      ],
+      "options": [
+        {
+          "text": "回到镇上",
+          "effects": [{ "type": "advanceTime", "minutes": 10 }],
+          "route": "map"
+        }
+      ]
     }
   ],
   "map": [

@@ -60,6 +60,35 @@ export type NpcLocationEncounter = {
   choiceText?: string;
 };
 
+export type NpcRealityReactionSource = 'todo' | 'habit';
+
+export type NpcRealityReactionLog = {
+  id: string;
+  source: NpcRealityReactionSource | 'game';
+  sourceId: string;
+  title: string;
+  category: string;
+  direction: 'gain' | 'revert';
+  createdAt: number;
+};
+
+export type NpcRealityReactionRule = {
+  npcId: string;
+  key: string;
+  match: {
+    category?: string | string[];
+    source?: NpcRealityReactionSource;
+    titleIncludes?: string[];
+  };
+  templates: string[];
+};
+
+export type NpcRealityReactionResult = {
+  text: string;
+  log?: NpcRealityReactionLog;
+  ruleKey: string;
+};
+
 export type Effect =
   | { type: 'setFlag'; key: string; value: boolean }
   | { type: 'addAttr'; key: string; value: number }

@@ -7,8 +7,15 @@ import { ThemedView } from '@/components/themed-view';
 import demoPackJson from '@/features/game/content/demo/events.json';
 import { demoLocations } from '@/features/game/content/demo/locations';
 import { demoNpcLocationEncounters, demoNpcSchedules, demoNpcs } from '@/features/game/content/demo/npcs';
+import {
+  demoNpcRealityReactionRules,
+  LILITH_REALITY_CHAT_EVENT_ID,
+  LILITH_TALK_EVENT_IDS,
+  lilithNoRecentRealityLogText,
+} from '@/features/game/content/demo/npcReactions';
 import { executeChoice, getAvailableChoices } from '@/features/game/engine/executor';
 import { getNpcEncountersAtLocation } from '@/features/game/engine/npc';
+import { createNpcRealityReaction } from '@/features/game/engine/npcReactions';
 import { formatGameTime } from '@/features/game/engine/time';
 import type { Choice, ContentPack, EventNode } from '@/features/game/engine/types';
 import { validateContentPack } from '@/features/game/engine/validate';
@@ -29,6 +36,7 @@ export default function GamePlayScreen() {
 
   const player = useGameStore((s) => s.player);
   const eventId = useGameStore((s) => s.eventId);
+  const rewardLogs = useGameStore((s) => s.rewardLogs);
   const setPlayer = useGameStore((s) => s.setPlayer);
   const setLocation = useGameStore((s) => s.setLocation);
   const gotoEvent = useGameStore((s) => s.gotoEvent);
@@ -41,9 +49,20 @@ export default function GamePlayScreen() {
   const choices = useMemo(() => {
     if (!event) return [];
 
-    const baseChoices = getAvailableChoices(event, player);
+    const nextChoices = [...getAvailableChoices(event, player)];
     if (!currentLocation || event.presentation === 'visualNovel' || event.id !== currentLocation.entryEventId) {
-      return baseChoices;
+      if (
+        event.id !== LILITH_REALITY_CHAT_EVENT_ID &&
+        LILITH_TALK_EVENT_IDS.includes(event.id as (typeof LILITH_TALK_EVENT_IDS)[number]) &&
+        eventsById.has(LILITH_REALITY_CHAT_EVENT_ID) &&
+        !nextChoices.some((choice) => choice.next?.eventId === LILITH_REALITY_CHAT_EVENT_ID)
+      ) {
+        nextChoices.push({
+          text: '聊聊近况',
+          next: { eventId: LILITH_REALITY_CHAT_EVENT_ID },
+        });
+      }
+      return nextChoices;
     }
 
     const npcChoices = getNpcEncountersAtLocation(
@@ -60,8 +79,42 @@ export default function GamePlayScreen() {
         next: { eventId: encounter.talkEventId },
       }));
 
-    return [...baseChoices, ...npcChoices];
+    nextChoices.push(...npcChoices);
+
+    if (
+      event.id !== LILITH_REALITY_CHAT_EVENT_ID &&
+      LILITH_TALK_EVENT_IDS.includes(event.id as (typeof LILITH_TALK_EVENT_IDS)[number]) &&
+      eventsById.has(LILITH_REALITY_CHAT_EVENT_ID) &&
+      !nextChoices.some((choice) => choice.next?.eventId === LILITH_REALITY_CHAT_EVENT_ID)
+    ) {
+      nextChoices.push({
+        text: '聊聊近况',
+        next: { eventId: LILITH_REALITY_CHAT_EVENT_ID },
+      });
+    }
+
+    return nextChoices;
   }, [currentLocation, event, eventsById, player]);
+  const displayEvent = useMemo(() => {
+    if (!event || event.id !== LILITH_REALITY_CHAT_EVENT_ID || event.presentation === 'visualNovel') {
+      return event;
+    }
+
+    const reaction = createNpcRealityReaction({
+      npcId: 'lilith',
+      logs: rewardLogs,
+      rules: demoNpcRealityReactionRules,
+      noRecentLogText: lilithNoRecentRealityLogText,
+    });
+
+    return {
+      ...event,
+      paragraphs: [
+        '莉莉丝歪了歪头，像是从很远的地方听见了现实的回声。',
+        reaction.text,
+      ],
+    };
+  }, [event, rewardLogs]);
   const locationLabel = locationNameById.get(player.location ?? 'home') ?? '未命名地点';
 
   return (
@@ -93,14 +146,14 @@ export default function GamePlayScreen() {
             ))}
           </ScrollView>
         </View>
-      ) : event ? (
+      ) : displayEvent ? (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.body}>
           <View style={[styles.locationRow, { backgroundColor: cardBg, borderColor: cardBorder }]}>
             <ThemedText style={[styles.locationText, { color: mutedText }]}>当前位置：{locationLabel}</ThemedText>
           </View>
 
           <EventRenderer
-            event={event}
+            event={displayEvent}
             choices={choices}
             onSelectChoice={(choice) => {
               const result = executeChoice(choice, player);

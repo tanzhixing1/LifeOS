@@ -11,4 +11,5 @@ export * from './types';
 export * from './executor';
 export * from './time';
 export * from './npc';
+export * from './npcReactions';
 export * from './validate';
