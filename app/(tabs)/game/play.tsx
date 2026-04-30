@@ -1,27 +1,55 @@
-import { router } from 'expo-router';
-import React, { useMemo } from 'react';
+import { router, useLocalSearchParams } from 'expo-router';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import demoPackJson from '@/features/game/content/demo/events.json';
-import { demoLocations } from '@/features/game/content/demo/locations';
-import { demoNpcLocationEncounters, demoNpcSchedules, demoNpcs } from '@/features/game/content/demo/npcs';
 import {
-  demoNpcRealityReactionRules,
   LILITH_REALITY_CHAT_EVENT_ID,
   LILITH_TALK_EVENT_IDS,
   lilithNoRecentRealityLogText,
-} from '@/features/game/content/demo/npcReactions';
+  mainContentPack,
+  mainLocations,
+  mainNpcLocationEncounters,
+  mainNpcRealityReactionRules,
+  mainNpcs,
+  mainNpcSchedules,
+} from '@/features/game/content/main';
 import { executeChoice, getAvailableChoices } from '@/features/game/engine/executor';
 import { getNpcEncountersAtLocation } from '@/features/game/engine/npc';
 import { createNpcRealityReaction } from '@/features/game/engine/npcReactions';
 import { formatGameTime } from '@/features/game/engine/time';
-import type { Choice, ContentPack, EventNode } from '@/features/game/engine/types';
+import type { Choice, EventNode } from '@/features/game/engine/types';
 import { validateContentPack } from '@/features/game/engine/validate';
 import { EventRenderer } from '@/features/game/ui/EventRenderer';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { useGameStore } from '@/stores';
+
+type PlayRouteParams = {
+  mode?: string | string[];
+  eventId?: string | string[];
+  locationId?: string | string[];
+};
+
+type PlayMode = 'start' | 'continue' | 'event';
+
+const HOME_LOCATION_ID = 'home';
+
+function firstParam(value: string | string[] | undefined): string | undefined {
+  if (Array.isArray(value)) return value[0];
+  if (typeof value === 'string' && value.length > 0) return value;
+  return undefined;
+}
+
+function resolveEventId(eventId: string | undefined, eventsById: Map<string, EventNode>, fallbackEventId: string): string {
+  if (eventId && eventsById.has(eventId)) return eventId;
+  return fallbackEventId;
+}
+
+function resolveLocationId(locationId: string | undefined, fallbackLocationId: string): string {
+  if (typeof locationId === 'string' && locationId.length > 0) return locationId;
+  return fallbackLocationId;
+}
 
 export default function GamePlayScreen() {
   const pageBg = useThemeColor({ light: '#F2EEE8', dark: '#171819' }, 'background');
@@ -29,23 +57,92 @@ export default function GamePlayScreen() {
   const cardBorder = useThemeColor({ light: '#D8D0C7', dark: '#2A3036' }, 'text');
   const mutedText = useThemeColor({ light: '#7A756F', dark: '#A7B0BE' }, 'text');
 
-  const pack = demoPackJson as ContentPack;
+  const params = useLocalSearchParams<PlayRouteParams>();
+  const routeMode = firstParam(params.mode);
+  const explicitEventId = firstParam(params.eventId);
+  const explicitLocationId = firstParam(params.locationId);
+
+  const pack = mainContentPack;
   const validation = useMemo(() => validateContentPack(pack), [pack]);
   const eventsById = useMemo(() => new Map<string, EventNode>(pack.events.map((event) => [event.id, event])), [pack.events]);
-  const locationNameById = useMemo(() => new Map(demoLocations.map((location) => [location.id, location.name])), []);
+  const locationNameById = useMemo(() => new Map(mainLocations.map((location) => [location.id, location.name])), []);
 
   const player = useGameStore((s) => s.player);
-  const eventId = useGameStore((s) => s.eventId);
   const rewardLogs = useGameStore((s) => s.rewardLogs);
   const setPlayer = useGameStore((s) => s.setPlayer);
   const setLocation = useGameStore((s) => s.setLocation);
   const gotoEvent = useGameStore((s) => s.gotoEvent);
+  const markResumePlay = useGameStore((s) => s.markResumePlay);
+  const markResumeMap = useGameStore((s) => s.markResumeMap);
 
-  const event = eventsById.get(eventId) ?? eventsById.get(pack.startEventId);
+  const [activeEventId, setActiveEventId] = useState<string | null>(null);
+  const [activeLocationId, setActiveLocationId] = useState(player.location ?? HOME_LOCATION_ID);
+  const [isResolvingInitialEvent, setIsResolvingInitialEvent] = useState(true);
+  const [hasResolvedInitialEvent, setHasResolvedInitialEvent] = useState(false);
+
+  const playMode = useMemo<PlayMode>(() => {
+    if (routeMode === 'start') return 'start';
+    if (routeMode === 'continue') return 'continue';
+    if (routeMode === 'event') return 'event';
+    return explicitEventId ? 'event' : 'continue';
+  }, [explicitEventId, routeMode]);
+
+  const initializationKey = `${playMode}:${explicitEventId ?? ''}:${explicitLocationId ?? ''}`;
+
+  useEffect(() => {
+    const store = useGameStore.getState();
+    const storedEventId = store.eventId;
+    const storedLocationId = store.player.location ?? HOME_LOCATION_ID;
+
+    let nextEventId = pack.startEventId;
+    let nextLocationId = storedLocationId;
+
+    setIsResolvingInitialEvent(true);
+    setHasResolvedInitialEvent(false);
+
+    if (playMode === 'start') {
+      nextEventId = pack.startEventId;
+      nextLocationId = HOME_LOCATION_ID;
+      setLocation(nextLocationId);
+      gotoEvent(nextEventId);
+    } else if (playMode === 'event') {
+      nextEventId = resolveEventId(explicitEventId, eventsById, pack.startEventId);
+      nextLocationId = resolveLocationId(explicitLocationId, storedLocationId);
+      if (storedEventId !== nextEventId) {
+        gotoEvent(nextEventId);
+      }
+      if (storedLocationId !== nextLocationId) {
+        setLocation(nextLocationId);
+      }
+    } else {
+      nextEventId = resolveEventId(explicitEventId ?? storedEventId, eventsById, pack.startEventId);
+      nextLocationId = resolveLocationId(explicitLocationId, storedLocationId);
+      if (storedEventId !== nextEventId) {
+        gotoEvent(nextEventId);
+      }
+      if (explicitLocationId && storedLocationId !== nextLocationId) {
+        setLocation(nextLocationId);
+      }
+    }
+
+    nextEventId = resolveEventId(nextEventId, eventsById, pack.startEventId);
+    setActiveEventId(nextEventId);
+    setActiveLocationId(nextLocationId);
+    setHasResolvedInitialEvent(true);
+    setIsResolvingInitialEvent(false);
+  }, [eventsById, explicitEventId, explicitLocationId, gotoEvent, initializationKey, pack.startEventId, playMode, setLocation]);
+
+  useEffect(() => {
+    if (!hasResolvedInitialEvent || !activeEventId) return;
+    markResumePlay(activeEventId, activeLocationId);
+  }, [activeEventId, activeLocationId, hasResolvedInitialEvent, markResumePlay]);
+
+  const event = (activeEventId ? eventsById.get(activeEventId) : undefined) ?? eventsById.get(pack.startEventId);
   const currentLocation = useMemo(
-    () => demoLocations.find((location) => location.id === (player.location ?? 'home')),
-    [player.location]
+    () => mainLocations.find((location) => location.id === activeLocationId),
+    [activeLocationId]
   );
+
   const choices = useMemo(() => {
     if (!event) return [];
 
@@ -68,14 +165,14 @@ export default function GamePlayScreen() {
     const npcChoices = getNpcEncountersAtLocation(
       currentLocation.id,
       player.gameTime,
-      demoNpcs,
-      demoNpcSchedules,
-      demoNpcLocationEncounters,
-      demoLocations
+      mainNpcs,
+      mainNpcSchedules,
+      mainNpcLocationEncounters,
+      mainLocations
     )
       .filter((encounter) => eventsById.has(encounter.talkEventId))
       .map<Choice>((encounter) => ({
-        text: encounter.choiceText ?? `和${encounter.npc.name}说话`,
+        text: encounter.choiceText ?? `和 ${encounter.npc.name} 说话`,
         next: { eventId: encounter.talkEventId },
       }));
 
@@ -95,6 +192,7 @@ export default function GamePlayScreen() {
 
     return nextChoices;
   }, [currentLocation, event, eventsById, player]);
+
   const displayEvent = useMemo(() => {
     if (!event || event.id !== LILITH_REALITY_CHAT_EVENT_ID || event.presentation === 'visualNovel') {
       return event;
@@ -103,25 +201,23 @@ export default function GamePlayScreen() {
     const reaction = createNpcRealityReaction({
       npcId: 'lilith',
       logs: rewardLogs,
-      rules: demoNpcRealityReactionRules,
+      rules: mainNpcRealityReactionRules,
       noRecentLogText: lilithNoRecentRealityLogText,
     });
 
     return {
       ...event,
-      paragraphs: [
-        '莉莉丝歪了歪头，像是从很远的地方听见了现实的回声。',
-        reaction.text,
-      ],
+      paragraphs: ['莉莉丝抬了抬眼，像是从很远的地方听见了现实世界的回声。', reaction.text],
     };
   }, [event, rewardLogs]);
-  const locationLabel = locationNameById.get(player.location ?? 'home') ?? '未命名地点';
+
+  const locationLabel = locationNameById.get(activeLocationId) ?? '未知地点';
 
   return (
     <ThemedView style={[styles.screen, { backgroundColor: pageBg }]}>
       <View style={styles.header}>
         <View style={styles.headerRow}>
-          <Pressable onPress={() => router.back()} style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1 }]}>
+          <Pressable onPress={() => router.replace('/(tabs)/game')} style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1 }]}>
             <ThemedText style={[styles.backText, { color: mutedText }]}>返回</ThemedText>
           </Pressable>
           <ThemedText style={styles.bigTitle}>事件</ThemedText>
@@ -146,7 +242,11 @@ export default function GamePlayScreen() {
             ))}
           </ScrollView>
         </View>
-      ) : displayEvent ? (
+      ) : isResolvingInitialEvent || !hasResolvedInitialEvent || !displayEvent || !activeEventId ? (
+        <View style={[styles.card, { backgroundColor: cardBg, borderColor: cardBorder }]}>
+          <ThemedText style={[styles.errorText, { color: mutedText }]}>正在载入当前事件...</ThemedText>
+        </View>
+      ) : (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.body}>
           <View style={[styles.locationRow, { backgroundColor: cardBg, borderColor: cardBorder }]}>
             <ThemedText style={[styles.locationText, { color: mutedText }]}>当前位置：{locationLabel}</ThemedText>
@@ -157,19 +257,45 @@ export default function GamePlayScreen() {
             choices={choices}
             onSelectChoice={(choice) => {
               const result = executeChoice(choice, player);
+              const nextLocationId = result.nextLocationId ?? result.player.location ?? activeLocationId;
+              const nextEventId = result.nextEventId ? resolveEventId(result.nextEventId, eventsById, pack.startEventId) : undefined;
+
               setPlayer(result.player);
+
+              if (nextLocationId !== activeLocationId) {
+                setActiveLocationId(nextLocationId);
+              }
+
               if (result.nextLocationId) {
                 setLocation(result.nextLocationId);
               }
+
               if (result.nextRoute === 'map') {
+                markResumeMap(nextLocationId);
                 router.replace('/(tabs)/game/map');
                 return;
               }
-              if (result.nextEventId) gotoEvent(result.nextEventId);
+
+              if (nextEventId) {
+                if (result.nextEventId !== nextEventId) {
+                  console.warn(`[game] Missing event "${result.nextEventId}", fallback to "${nextEventId}".`);
+                }
+                setActiveEventId(nextEventId);
+                gotoEvent(nextEventId);
+                markResumePlay(nextEventId, nextLocationId);
+                return;
+              }
+
+              if (result.nextLocationId) {
+                markResumePlay(activeEventId, nextLocationId);
+                return;
+              }
+
+              console.warn(`[game] Choice has no navigation target in event "${activeEventId}": "${choice.text}"`);
             }}
           />
         </ScrollView>
-      ) : null}
+      )}
     </ThemedView>
   );
 }

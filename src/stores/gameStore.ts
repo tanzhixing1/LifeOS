@@ -36,11 +36,27 @@ export const DEFAULT_WALLET: PlayerWallet = {
   money: 50,
 };
 
+export type ResumeScreen = 'play' | 'map';
+
+export type ResumeTarget =
+  | {
+      type: 'play';
+      eventId: string;
+      locationId?: string;
+    }
+  | {
+      type: 'map';
+      locationId?: string;
+    };
+
 export type SaveSlot = {
   id: string;
   savedAt: number;
   player: PlayerState;
   eventId: string;
+  lastScreen: ResumeScreen;
+  lastEventId?: string;
+  resumeTarget: ResumeTarget;
 };
 
 export type RewardLogDirection = 'gain' | 'revert';
@@ -59,6 +75,9 @@ export type RewardLog = {
 export type GameState = {
   player: PlayerState;
   eventId: string;
+  lastScreen: ResumeScreen;
+  lastEventId?: string;
+  resumeTarget: ResumeTarget;
   saveSlots: Record<string, SaveSlot | null>;
   rewardLogs: RewardLog[];
 };
@@ -74,6 +93,8 @@ export type GameActions = {
   addRewardLog(log: RewardLog): void;
   setLocation(locationId: string | undefined): void;
   gotoEvent(eventId: string): void;
+  markResumePlay(eventId: string, locationId?: string): void;
+  markResumeMap(locationId?: string): void;
   save(slotId: string): void;
   load(slotId: string): void;
   resetGame(): void;
@@ -130,13 +151,67 @@ function normalizeSaveSlot(slot: SaveSlot | null | undefined): SaveSlot | null {
   return {
     ...slot,
     player: normalizePlayer(slot.player),
+    lastScreen: normalizeResumeScreen(slot.lastScreen),
+    lastEventId: normalizeOptionalEventId(slot.lastEventId),
+    resumeTarget: normalizeResumeTarget(slot.resumeTarget, slot.eventId, slot.player?.location),
   };
 }
 
-function defaultState(): GameState {
+function normalizeEventId(eventId?: string): string {
+  return typeof eventId === 'string' && eventId.length > 0 ? eventId : 'prologue_wake_up';
+}
+
+function normalizeOptionalEventId(eventId?: string): string | undefined {
+  return typeof eventId === 'string' && eventId.length > 0 ? eventId : undefined;
+}
+
+function normalizeResumeScreen(screen?: string): ResumeScreen {
+  return screen === 'map' ? 'map' : 'play';
+}
+
+function normalizeResumeTarget(target: unknown, fallbackEventId?: string, fallbackLocationId?: string): ResumeTarget {
+  if (target && typeof target === 'object' && 'type' in target) {
+    const nextTarget = target as Partial<ResumeTarget>;
+    if (nextTarget.type === 'map') {
+      return {
+        type: 'map',
+        locationId: normalizeOptionalLocation(nextTarget.locationId),
+      };
+    }
+
+    if (nextTarget.type === 'play') {
+      return {
+        type: 'play',
+        eventId: normalizeEventId(nextTarget.eventId ?? fallbackEventId),
+        locationId: normalizeOptionalLocation(nextTarget.locationId ?? fallbackLocationId),
+      };
+    }
+  }
+
   return {
-    player: normalizePlayer(),
-    eventId: 'demo_start',
+    type: 'play',
+    eventId: normalizeEventId(fallbackEventId),
+    locationId: normalizeOptionalLocation(fallbackLocationId),
+  };
+}
+
+function normalizeOptionalLocation(locationId?: string): string | undefined {
+  return typeof locationId === 'string' && locationId.length > 0 ? normalizeLocation(locationId) : undefined;
+}
+
+function defaultState(): GameState {
+  const player = normalizePlayer();
+  const eventId = 'prologue_wake_up';
+  return {
+    player,
+    eventId,
+    lastScreen: 'play',
+    lastEventId: eventId,
+    resumeTarget: {
+      type: 'play',
+      eventId,
+      locationId: player.location,
+    },
     saveSlots: {
       slot1: null,
       slot2: null,
@@ -201,7 +276,29 @@ export const useGameStore = create<GameStore>()(
         set((s) => ({ player: { ...s.player, location: normalizeLocation(locationId) } }));
       },
       gotoEvent(eventId) {
-        set({ eventId });
+        set({ eventId: normalizeEventId(eventId) });
+      },
+      markResumePlay(eventId, locationId) {
+        const normalizedEventId = normalizeEventId(eventId);
+        const normalizedLocationId = normalizeOptionalLocation(locationId);
+        set({
+          lastScreen: 'play',
+          lastEventId: normalizedEventId,
+          resumeTarget: {
+            type: 'play',
+            eventId: normalizedEventId,
+            locationId: normalizedLocationId,
+          },
+        });
+      },
+      markResumeMap(locationId) {
+        set({
+          lastScreen: 'map',
+          resumeTarget: {
+            type: 'map',
+            locationId: normalizeOptionalLocation(locationId),
+          },
+        });
       },
       save(slotId) {
         const state = get();
@@ -209,7 +306,10 @@ export const useGameStore = create<GameStore>()(
           id: slotId,
           savedAt: Date.now(),
           player: normalizePlayer(state.player),
-          eventId: state.eventId,
+          eventId: normalizeEventId(state.eventId),
+          lastScreen: state.lastScreen,
+          lastEventId: normalizeOptionalEventId(state.lastEventId),
+          resumeTarget: normalizeResumeTarget(state.resumeTarget, state.lastEventId ?? state.eventId, state.player.location),
         };
         set((s) => ({ saveSlots: { ...s.saveSlots, [slotId]: slot } }));
       },
@@ -218,7 +318,10 @@ export const useGameStore = create<GameStore>()(
         if (!slot) return;
         set((s) => ({
           player: slot.player,
-          eventId: slot.eventId,
+          eventId: normalizeEventId(slot.eventId),
+          lastScreen: slot.lastScreen,
+          lastEventId: normalizeOptionalEventId(slot.lastEventId),
+          resumeTarget: normalizeResumeTarget(slot.resumeTarget, slot.lastEventId ?? slot.eventId, slot.player.location),
           saveSlots: { ...s.saveSlots, [slotId]: slot },
         }));
       },
@@ -228,17 +331,34 @@ export const useGameStore = create<GameStore>()(
     }),
     {
       name: 'lifeos.gameStore',
-      version: 5,
+      version: 6,
       storage: zustandStorage,
-      partialize: (s) => ({ player: s.player, eventId: s.eventId, saveSlots: s.saveSlots, rewardLogs: s.rewardLogs }),
+      partialize: (s) => ({
+        player: s.player,
+        eventId: s.eventId,
+        lastScreen: s.lastScreen,
+        lastEventId: s.lastEventId,
+        resumeTarget: s.resumeTarget,
+        saveSlots: s.saveSlots,
+        rewardLogs: s.rewardLogs,
+      }),
       migrate: (persistedState: any) => {
         const state = persistedState && typeof persistedState === 'object' ? persistedState : {};
 
         const saveSlots = state?.saveSlots && typeof state.saveSlots === 'object' ? state.saveSlots : {};
+        const normalizedPlayer = normalizePlayer(state.player);
+        const normalizedEventId = normalizeEventId(state.eventId);
+        const normalizedLastScreen = normalizeResumeScreen(state.lastScreen);
+        const normalizedLastEventId = normalizeOptionalEventId(state.lastEventId) ?? normalizedEventId;
+        const normalizedResumeTarget = normalizeResumeTarget(state.resumeTarget, normalizedLastEventId, normalizedPlayer.location);
 
         return {
           ...state,
-          player: normalizePlayer(state.player),
+          player: normalizedPlayer,
+          eventId: normalizedEventId,
+          lastScreen: normalizedLastScreen,
+          lastEventId: normalizedLastEventId,
+          resumeTarget: normalizedResumeTarget,
           saveSlots: {
             slot1: normalizeSaveSlot(saveSlots.slot1),
             slot2: normalizeSaveSlot(saveSlots.slot2),

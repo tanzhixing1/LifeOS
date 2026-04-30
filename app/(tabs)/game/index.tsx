@@ -1,12 +1,16 @@
 import { router } from 'expo-router';
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { mainContentPack } from '@/features/game/content/main';
+import type { EventNode } from '@/features/game/engine/types';
 import { formatGameTime } from '@/features/game/engine/time';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { useGameStore } from '@/stores';
+
+const HOME_LOCATION_ID = 'home';
 
 export default function GameHomeScreen() {
   const pageBg = useThemeColor({ light: '#F2EEE8', dark: '#171819' }, 'background');
@@ -21,20 +25,63 @@ export default function GameHomeScreen() {
   const hudAccent = useThemeColor({ light: '#6366F1', dark: '#6366F1' }, 'tint');
 
   const player = useGameStore((s) => s.player);
+  const lastScreen = useGameStore((s) => s.lastScreen);
+  const lastEventId = useGameStore((s) => s.lastEventId);
+  const resumeTarget = useGameStore((s) => s.resumeTarget);
   const mana = player.attrs.mana ?? 0;
   const hp = player.attrs.hp ?? 0;
   const sanity = player.attrs.sanity ?? 0;
 
+  const eventsById = useMemo(() => new Map<string, EventNode>(mainContentPack.events.map((event) => [event.id, event])), []);
+
+  function startPrologue() {
+    const store = useGameStore.getState();
+    const startEventId = mainContentPack.startEventId;
+    store.setLocation(HOME_LOCATION_ID);
+    store.gotoEvent(startEventId);
+    store.markResumePlay(startEventId, HOME_LOCATION_ID);
+    router.replace(
+      `/(tabs)/game/play?mode=start&eventId=${encodeURIComponent(startEventId)}&locationId=${encodeURIComponent(HOME_LOCATION_ID)}`
+    );
+  }
+
+  function continueJourney() {
+    const store = useGameStore.getState();
+
+    if (resumeTarget.type === 'map' || lastScreen === 'map') {
+      router.replace('/(tabs)/game/map');
+      return;
+    }
+
+    const candidateEventIds = [
+      resumeTarget.type === 'play' ? resumeTarget.eventId : undefined,
+      lastEventId,
+      store.eventId,
+      mainContentPack.startEventId,
+    ];
+    const nextEventId = candidateEventIds.find((eventId) => Boolean(eventId) && eventsById.has(eventId as string));
+    const nextLocationId =
+      resumeTarget.type === 'play'
+        ? resumeTarget.locationId ?? store.player.location ?? HOME_LOCATION_ID
+        : store.player.location ?? HOME_LOCATION_ID;
+
+    if (nextEventId) {
+      router.replace(
+        `/(tabs)/game/play?mode=continue&eventId=${encodeURIComponent(nextEventId)}&locationId=${encodeURIComponent(nextLocationId)}`
+      );
+      return;
+    }
+
+    startPrologue();
+  }
+
   function confirmResetGame() {
-    Alert.alert('开始新旅程？', '这会重置当前游戏进度和属性，但不会影响现实任务记录。', [
+    Alert.alert('开始新旅程', '这会重置当前游戏进度和属性，但不会影响现实任务记录。', [
       { text: '取消', style: 'cancel' },
       {
         text: '确认开始',
         style: 'destructive',
-        onPress: () => {
-          useGameStore.getState().resetGame();
-          router.push('/(tabs)/game/map');
-        },
+        onPress: startPrologue,
       },
     ]);
   }
@@ -44,7 +91,7 @@ export default function GameHomeScreen() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
           <ThemedText style={styles.bigTitle}>魔女模拟器</ThemedText>
-          <ThemedText style={[styles.subtitle, { color: mutedText }]}>先去地图。别急着写传奇。</ThemedText>
+          <ThemedText style={[styles.subtitle, { color: mutedText }]}>从小屋醒来，再走进雾莓镇。</ThemedText>
         </View>
 
         <View style={[styles.hud, { backgroundColor: hudBg, borderColor: hudBorder }]}>
@@ -96,20 +143,16 @@ export default function GameHomeScreen() {
         </View>
 
         <View style={[styles.parchment, { backgroundColor: cardBg, borderColor: cardBorder }]}>
-          <ThemedText style={[styles.parchmentHint, { color: mutedText }]}>羊皮纸 / 渐变紫（占位背景语义）</ThemedText>
+          <ThemedText style={[styles.parchmentHint, { color: mutedText }]}>序章入口和继续旅程现在会按不同恢复规则进入游戏。</ThemedText>
 
-          <Pressable
-            onPress={() => router.push('/(tabs)/game/map')}
-            style={({ pressed }) => [styles.mapNode, { borderColor: accent, opacity: pressed ? 0.92 : 1 }]}>
-            <ThemedText style={[styles.mapNodeText, { color: accent }]}>世界入口（地图节点占位）</ThemedText>
-            <ThemedText style={[styles.mapNodeSub, { color: mutedText }]}>点我进入地图</ThemedText>
+          <Pressable onPress={startPrologue} style={({ pressed }) => [styles.mapNode, { borderColor: accent, opacity: pressed ? 0.92 : 1 }]}>
+            <ThemedText style={[styles.mapNodeText, { color: accent }]}>从序章开始</ThemedText>
+            <ThemedText style={[styles.mapNodeSub, { color: mutedText }]}>强制进入 prologue_wake_up</ThemedText>
           </Pressable>
 
           <View style={styles.primaryArea}>
-            <Pressable
-              onPress={() => router.push('/(tabs)/game/map')}
-              style={({ pressed }) => [styles.primaryBtn, { backgroundColor: accent, opacity: pressed ? 0.92 : 1 }]}>
-              <ThemedText style={styles.primaryBtnText}>进入地图</ThemedText>
+            <Pressable onPress={continueJourney} style={({ pressed }) => [styles.primaryBtn, { backgroundColor: accent, opacity: pressed ? 0.92 : 1 }]}>
+              <ThemedText style={styles.primaryBtnText}>继续旅程</ThemedText>
             </Pressable>
             <Pressable onPress={confirmResetGame} style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1 }]}>
               <ThemedText style={[styles.linkText, { color: mutedText }]}>开始新旅程</ThemedText>

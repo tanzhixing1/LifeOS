@@ -1,0 +1,377 @@
+{
+  "startEventId": "prologue_wake_up",
+  "events": [
+    {
+      "id": "prologue_wake_up",
+      "title": "雾莓镇的清晨",
+      "presentation": "visualNovel",
+      "backgroundId": "room_morning",
+      "dialogue": [
+        { "speakerId": "narrator", "speakerName": "旁白", "text": "你在魔女小屋里醒来时，窗外的雾还没有完全散开。" },
+        { "speakerId": "narrator", "speakerName": "旁白", "text": "木桌上摊着笔记，杯口残留着昨夜草药茶的味道。" },
+        { "speakerId": "me", "speakerName": "我", "text": "今天总不能继续只在脑子里生活了。" }
+      ],
+      "options": [
+        {
+          "text": "坐起来看看四周",
+          "effects": [{ "type": "setFlag", "key": "prologue_started", "value": true }],
+          "next": { "eventId": "prologue_lilith_intro", "locationId": "home" }
+        }
+      ]
+    },
+    {
+      "id": "prologue_lilith_intro",
+      "title": "莉莉丝",
+      "presentation": "visualNovel",
+      "backgroundId": "room_morning",
+      "characters": [
+        {
+          "id": "lilith",
+          "name": "莉莉丝",
+          "position": "right",
+          "defaultSpriteId": "mentor_neutral",
+          "defaultExpression": "平静"
+        }
+      ],
+      "dialogue": [
+        { "speakerId": "lilith", "speakerName": "莉莉丝", "spriteId": "mentor_neutral", "text": "你醒得正好，亲爱的。" },
+        { "speakerId": "lilith", "speakerName": "莉莉丝", "spriteId": "mentor_neutral", "text": "雾莓镇不会等一个赖床的见习魔女太久。" },
+        { "speakerId": "me", "speakerName": "我", "text": "所以我现在算正式开始了？" },
+        { "speakerId": "lilith", "speakerName": "莉莉丝", "spriteId": "mentor_neutral", "text": "至少你终于愿意从小屋里起身了，这已经比很多誓言都可靠。" }
+      ],
+      "options": [
+        {
+          "text": "听她继续说下去",
+          "effects": [
+            { "type": "setFlag", "key": "met_lilith", "value": true },
+            { "type": "setFlag", "key": "lilith_intro_seen", "value": true }
+          ],
+          "next": { "eventId": "prologue_first_choice", "locationId": "home" }
+        }
+      ]
+    },
+    {
+      "id": "prologue_first_choice",
+      "title": "今天想怎么开始",
+      "presentation": "visualNovel",
+      "backgroundId": "room_morning",
+      "characters": [
+        {
+          "id": "lilith",
+          "name": "莉莉丝",
+          "position": "right",
+          "defaultSpriteId": "mentor_neutral",
+          "defaultExpression": "平静"
+        }
+      ],
+      "dialogue": [
+        { "speakerId": "lilith", "speakerName": "莉莉丝", "spriteId": "mentor_neutral", "text": "在出门之前，先决定今天想把自己调成什么样子。" },
+        { "speakerId": "lilith", "speakerName": "莉莉丝", "spriteId": "mentor_neutral", "text": "专注一点，聪明一点，嘴甜一点，或者至少清醒一点。" }
+      ],
+      "options": [
+        {
+          "text": "先整理好桌上的魔法笔记",
+          "effects": [
+            { "type": "addAttr", "key": "focus", "value": 1 },
+            { "type": "setFlag", "key": "prologue_first_choice_done", "value": true }
+          ],
+          "next": { "eventId": "cottage_first_morning", "locationId": "home" }
+        },
+        {
+          "text": "翻开那本旧书看一眼",
+          "effects": [
+            { "type": "addAttr", "key": "intelligence", "value": 1 },
+            { "type": "setFlag", "key": "prologue_first_choice_done", "value": true }
+          ],
+          "next": { "eventId": "cottage_first_morning", "locationId": "home" }
+        },
+        {
+          "text": "先学着自然地回她一句",
+          "effects": [
+            { "type": "addAttr", "key": "charisma", "value": 1 },
+            { "type": "setFlag", "key": "prologue_first_choice_done", "value": true }
+          ],
+          "next": { "eventId": "cottage_first_morning", "locationId": "home" }
+        }
+      ]
+    },
+    {
+      "id": "cottage_first_morning",
+      "title": "魔女小屋",
+      "paragraphs": [
+        "小屋终于安静下来，只剩笔记、药草和窗边那团还没散尽的晨雾陪着你。",
+        "今天的雾莓镇就在门外。莉莉丝没有催促，只把决定权丢回给了你。"
+      ],
+      "options": [
+        {
+          "text": "整理一下桌面和笔记",
+          "effects": [
+            { "type": "addAttr", "key": "focus", "value": 1 },
+            { "type": "advanceTime", "minutes": 20 }
+          ],
+          "next": { "eventId": "cottage_first_morning", "locationId": "home" }
+        },
+        {
+          "text": "翻翻旧书上的边注",
+          "conditions": [{ "type": "attr", "key": "intelligence", "op": "gte", "value": 1 }],
+          "effects": [
+            { "type": "addAttr", "key": "intelligence", "value": 1 },
+            { "type": "advanceTime", "minutes": 20 }
+          ],
+          "next": { "eventId": "cottage_first_morning", "locationId": "home" }
+        },
+        {
+          "text": "推门出去看看雾莓镇",
+          "next": { "eventId": "fogberry_map_intro", "locationId": "home" }
+        }
+      ]
+    },
+    {
+      "id": "fogberry_map_intro",
+      "title": "雾莓镇",
+      "paragraphs": [
+        "门一打开，湿冷又清醒的空气就贴上了你的脸。",
+        "雾莓镇在清晨里慢慢醒来，市集、杂货铺、教堂、森林和酒吧都像等待你做选择的分岔。"
+      ],
+      "options": [
+        {
+          "text": "沿着石板路走进镇子",
+          "effects": [{ "type": "setFlag", "key": "fogberry_map_intro_seen", "value": true }],
+          "route": "map"
+        }
+      ]
+    },
+    {
+      "id": "market_first_visit",
+      "title": "市集",
+      "paragraphs": [
+        "白天的市集比小屋热闹太多。摊位、香气和讨价还价的声音把整条街都搅得很有精神。",
+        "你还不确定今天想从哪里开始，但这里至少能让你先看见这座镇子的呼吸。"
+      ],
+      "options": [
+        {
+          "text": "慢慢看看摊位",
+          "effects": [
+            { "type": "addAttr", "key": "focus", "value": 1 },
+            { "type": "advanceTime", "minutes": 20 }
+          ],
+          "next": { "eventId": "market_first_visit", "locationId": "market" }
+        },
+        {
+          "text": "和摊主打听几句消息",
+          "effects": [
+            { "type": "addAttr", "key": "friendship", "value": 1 },
+            { "type": "advanceTime", "minutes": 20 }
+          ],
+          "next": { "eventId": "market_first_visit", "locationId": "market" }
+        },
+        {
+          "text": "顺着那道熟悉的笑声找过去",
+          "conditions": [{ "type": "flag", "key": "lilith_first_meeting_done", "value": false }],
+          "next": { "eventId": "lilith_first_meeting", "locationId": "market" }
+        },
+        {
+          "text": "离开",
+          "route": "map"
+        }
+      ]
+    },
+    {
+      "id": "lilith_first_meeting",
+      "title": "导师的闲逛",
+      "presentation": "visualNovel",
+      "backgroundId": "room_morning",
+      "characters": [
+        {
+          "id": "lilith",
+          "name": "莉莉丝",
+          "position": "right",
+          "defaultSpriteId": "mentor_neutral",
+          "defaultExpression": "愉快"
+        }
+      ],
+      "dialogue": [
+        { "speakerId": "lilith", "speakerName": "莉莉丝", "spriteId": "mentor_neutral", "text": "你也来市集？不错，亲爱的，你终于学会用脚而不是用幻想生活了。" },
+        { "speakerId": "me", "speakerName": "我", "text": "你为什么总能比我先一步出现在该出现的地方？" },
+        { "speakerId": "lilith", "speakerName": "莉莉丝", "spriteId": "mentor_neutral", "text": "因为我比你更愿意按时出门。另一个原因，等你再长大一点我再告诉你。" }
+      ],
+      "options": [
+        {
+          "text": "问她今天该先做什么",
+          "effects": [
+            { "type": "setFlag", "key": "lilith_first_meeting_done", "value": true },
+            { "type": "addAttr", "key": "focus", "value": 1 }
+          ],
+          "next": { "eventId": "market_first_visit", "locationId": "market" }
+        },
+        {
+          "text": "假装自己一点也不惊讶",
+          "effects": [
+            { "type": "setFlag", "key": "lilith_first_meeting_done", "value": true },
+            { "type": "addAttr", "key": "charisma", "value": 1 }
+          ],
+          "next": { "eventId": "market_first_visit", "locationId": "market" }
+        }
+      ]
+    },
+    {
+      "id": "grocery_first_visit",
+      "title": "杂货铺",
+      "paragraphs": [
+        "货架上摆着糖果、空白本子和看起来会让人莫名多买一件的杂物。",
+        "你暂时还不准备认真购物，但这里显然会成为一个经常路过的地方。"
+      ],
+      "options": [
+        {
+          "text": "把环境记下来",
+          "effects": [{ "type": "advanceTime", "minutes": 10 }],
+          "next": { "eventId": "grocery_first_visit", "locationId": "grocery" }
+        },
+        {
+          "text": "离开",
+          "route": "map"
+        }
+      ]
+    },
+    {
+      "id": "church_first_visit",
+      "title": "圣殿 / 教堂",
+      "paragraphs": [
+        "长椅、烛火和低声祷词把这里衬得很轻，像一种不会追问你的安静。",
+        "你在门口停了停，还没决定要把什么愿望放进这里。"
+      ],
+      "options": [
+        {
+          "text": "安静地坐一会儿",
+          "effects": [
+            { "type": "addAttr", "key": "sanity", "value": 1 },
+            { "type": "advanceTime", "minutes": 20 }
+          ],
+          "next": { "eventId": "church_first_visit", "locationId": "church" }
+        },
+        {
+          "text": "离开",
+          "route": "map"
+        }
+      ]
+    },
+    {
+      "id": "forest_edge_first_visit",
+      "title": "魔物森林",
+      "paragraphs": [
+        "林地边缘的潮气裹着泥土和草叶味，提醒你这里不只是风景。",
+        "现在还不是深入的时候，但你已经能感觉到它迟早会把你叫进去。"
+      ],
+      "options": [
+        {
+          "text": "在边缘观察一会儿",
+          "effects": [
+            { "type": "addAttr", "key": "proficiency", "value": 1 },
+            { "type": "advanceTime", "minutes": 20 }
+          ],
+          "next": { "eventId": "forest_edge_first_visit", "locationId": "forest" }
+        },
+        {
+          "text": "先不进去",
+          "route": "map"
+        }
+      ]
+    },
+    {
+      "id": "bar_first_visit",
+      "title": "酒吧",
+      "paragraphs": [
+        "白天的酒吧还没真正醒过来，夜色和秘密都暂时躲在门后。",
+        "你记下了它的位置，准备以后再来。"
+      ],
+      "options": [
+        {
+          "text": "离开",
+          "route": "map"
+        }
+      ]
+    },
+    {
+      "id": "lilith_talk_church",
+      "title": "莉莉丝",
+      "paragraphs": [
+        "莉莉丝坐在最后一排，手里拿着一本倒着翻的祷文。",
+        "她抬眼看你，像是早就知道你会在这个时间出现。"
+      ],
+      "options": [
+        {
+          "text": "回到镇上",
+          "effects": [{ "type": "advanceTime", "minutes": 10 }],
+          "route": "map"
+        }
+      ]
+    },
+    {
+      "id": "lilith_talk_market",
+      "title": "莉莉丝",
+      "paragraphs": [
+        "莉莉丝正站在摊位前，认真比较两瓶颜色可疑的小甜水。",
+        "她朝你晃了晃手里的瓶子，笑得像是已经替你做完了选择。"
+      ],
+      "options": [
+        {
+          "text": "陪她聊一会儿",
+          "effects": [{ "type": "advanceTime", "minutes": 10 }],
+          "route": "map"
+        }
+      ]
+    },
+    {
+      "id": "lilith_talk_grocery",
+      "title": "莉莉丝",
+      "paragraphs": [
+        "莉莉丝把一盒包装过度的糖果放回货架，又若无其事地重新拿起。",
+        "她显然把这种无意义的比较当成了一种娱乐。"
+      ],
+      "options": [
+        {
+          "text": "听她点评糖果",
+          "effects": [{ "type": "advanceTime", "minutes": 10 }],
+          "route": "map"
+        }
+      ]
+    },
+    {
+      "id": "lilith_talk_bar",
+      "title": "莉莉丝",
+      "paragraphs": [
+        "莉莉丝坐在吧台边，杯子里浮着一片发光的薄荷叶。",
+        "她向你举杯，像夜色本身也欠她一句问候。"
+      ],
+      "options": [
+        {
+          "text": "在吧台边坐一会儿",
+          "effects": [{ "type": "advanceTime", "minutes": 10 }],
+          "route": "map"
+        }
+      ]
+    },
+    {
+      "id": "lilith_reality_chat",
+      "title": "近况",
+      "paragraphs": [
+        "莉莉丝正了正头，像是从很远的地方听见了现实的回声。"
+      ],
+      "options": [
+        {
+          "text": "回到镇上",
+          "effects": [{ "type": "advanceTime", "minutes": 10 }],
+          "route": "map"
+        }
+      ]
+    }
+  ],
+  "map": [
+    { "id": "home", "name": "魔女小屋", "neighbors": ["market", "grocery", "church"] },
+    { "id": "market", "name": "市集", "neighbors": ["home", "grocery", "church", "forest"] },
+    { "id": "grocery", "name": "杂货铺", "neighbors": ["home", "market"] },
+    { "id": "church", "name": "圣殿 / 教堂", "neighbors": ["home", "market"] },
+    { "id": "forest", "name": "魔物森林", "neighbors": ["market", "bar"] },
+    { "id": "bar", "name": "酒吧", "neighbors": ["forest"] }
+  ]
+}

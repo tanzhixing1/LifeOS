@@ -1,16 +1,14 @@
 import { router } from 'expo-router';
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import demoPackJson from '@/features/game/content/demo/events.json';
-import { demoLocations } from '@/features/game/content/demo/locations';
-import { demoNpcSchedules, demoNpcs } from '@/features/game/content/demo/npcs';
+import { mainContentPack, mainLocations, mainNpcs, mainNpcSchedules } from '@/features/game/content/main';
 import { evaluateCondition } from '@/features/game/engine/executor';
 import { getNpcsAtLocation } from '@/features/game/engine/npc';
 import { formatGameTime, formatOpenHours, isLocationOpen } from '@/features/game/engine/time';
-import type { ContentPack, EventNode, GameLocation, PlayerState } from '@/features/game/engine/types';
+import type { EventNode, GameLocation, PlayerState } from '@/features/game/engine/types';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { useGameStore } from '@/stores';
 
@@ -21,18 +19,24 @@ export default function GameMapScreen() {
   const mutedText = useThemeColor({ light: '#7A756F', dark: '#A7B0BE' }, 'text');
   const accent = useThemeColor({ light: '#D1BBDE', dark: '#D1BBDE' }, 'tint');
 
-  const pack = demoPackJson as ContentPack;
+  const pack = mainContentPack;
   const eventsById = useMemo(() => new Map<string, EventNode>(pack.events.map((event) => [event.id, event])), [pack.events]);
 
   const player = useGameStore((s) => s.player);
   const setLocation = useGameStore((s) => s.setLocation);
   const gotoEvent = useGameStore((s) => s.gotoEvent);
-  const locations = useMemo(() => demoLocations.filter((location) => isLocationUnlocked(location, player)), [player]);
+  const markResumeMap = useGameStore((s) => s.markResumeMap);
+  const markResumePlay = useGameStore((s) => s.markResumePlay);
+  const locations = useMemo(() => mainLocations.filter((location) => isLocationUnlocked(location, player)), [player]);
+
+  useEffect(() => {
+    markResumeMap(useGameStore.getState().player.location);
+  }, [markResumeMap]);
 
   function enterLocation(location: GameLocation) {
     if (!isLocationOpen(location, player.gameTime)) {
       const hoursLabel = formatOpenHours(location.openHours) ?? '全天开放';
-      const message = location.id === 'bar' ? '酒吧会在 20:00 后开门。' : `${location.name} 会在 ${hoursLabel} 时开放。`;
+      const message = location.id === 'bar' ? '酒吧会在 20:00 之后开门。' : `${location.name} 会在 ${hoursLabel} 时开放。`;
       Alert.alert('尚未营业', message);
       return;
     }
@@ -40,14 +44,15 @@ export default function GameMapScreen() {
     setLocation(location.id);
     const nextEventId = eventsById.has(location.entryEventId) ? location.entryEventId : pack.startEventId;
     gotoEvent(nextEventId);
-    router.push('/(tabs)/game/play');
+    markResumePlay(nextEventId, location.id);
+    router.replace(`/(tabs)/game/play?mode=continue&eventId=${encodeURIComponent(nextEventId)}&locationId=${encodeURIComponent(location.id)}`);
   }
 
   return (
     <ThemedView style={[styles.screen, { backgroundColor: pageBg }]}>
       <View style={styles.header}>
         <View style={styles.headerRow}>
-          <Pressable onPress={() => router.back()} style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1 }]}>
+          <Pressable onPress={() => router.replace('/(tabs)/game')} style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1 }]}>
             <ThemedText style={[styles.backText, { color: mutedText }]}>返回</ThemedText>
           </Pressable>
           <ThemedText style={styles.bigTitle}>雾莓镇</ThemedText>
@@ -94,7 +99,7 @@ type LocationCardProps = {
 function LocationCard({ location, isCurrent, player, accent, cardBorder, mutedText, onPress }: LocationCardProps) {
   const open = isLocationOpen(location, player.gameTime);
   const hoursLabel = formatOpenHours(location.openHours);
-  const visibleNpcs = getNpcsAtLocation(location.id, player.gameTime, demoNpcs, demoNpcSchedules, demoLocations);
+  const visibleNpcs = getNpcsAtLocation(location.id, player.gameTime, mainNpcs, mainNpcSchedules, mainLocations);
   const visibleNpcNames = visibleNpcs.map((npc) => npc.name).join('、');
 
   return (
@@ -118,9 +123,7 @@ function LocationCard({ location, isCurrent, player, accent, cardBorder, mutedTe
               backgroundColor: open ? 'rgba(209,187,222,0.14)' : 'rgba(122,117,111,0.08)',
             },
           ]}>
-          <ThemedText style={[styles.nodeStatusText, { color: open ? accent : mutedText }]}>
-            {open ? '营业中' : '尚未营业'}
-          </ThemedText>
+          <ThemedText style={[styles.nodeStatusText, { color: open ? accent : mutedText }]}>{open ? '营业中' : '尚未营业'}</ThemedText>
         </View>
       </View>
 
