@@ -7,13 +7,15 @@
       "presentation": "visualNovel",
       "backgroundId": "room_morning",
       "dialogue": [
-        { "speakerId": "narrator", "speakerName": "旁白", "text": "你在魔女小屋里醒来时，窗外的雾还没有完全散开。" },
-        { "speakerId": "narrator", "speakerName": "旁白", "text": "木桌上摊着笔记，杯口残留着昨夜草药茶的味道。" },
-        { "speakerId": "me", "speakerName": "我", "text": "今天总不能继续只在脑子里生活了。" }
+        { "speakerId": "narrator", "speakerName": "旁白", "text": "晨光从斜斜的小窗照进来，落在梁上晾着的药草束上，把整间魔女小屋都晒出一点暖意。" },
+        { "speakerId": "narrator", "speakerName": "旁白", "text": "木桌上摊着昨晚抄到一半的笔记，旧书压着几片卷边的叶子，杯底还留着草药茶微苦的香气。" },
+        { "speakerId": "narrator", "speakerName": "旁白", "text": "透过窗子，雾莓镇还裹在轻雾里。石板路、低矮屋顶和远处的钟楼都像刚准备醒来。" },
+        { "speakerId": "me", "speakerName": "我", "text": "今天就是第一天了。再紧张，也该像个真正的见习魔女那样出门。" },
+        { "speakerId": "narrator", "speakerName": "旁白", "text": "门外传来瓷杯轻碰木盘的声音，有人显然比你更早开始了今天。" }
       ],
       "options": [
         {
-          "text": "坐起来看看四周",
+          "text": "起身去看看",
           "effects": [{ "type": "setFlag", "key": "prologue_started", "value": true }],
           "next": { "eventId": "prologue_lilith_intro", "locationId": "home" }
         }
@@ -34,14 +36,15 @@
         }
       ],
       "dialogue": [
-        { "speakerId": "lilith", "speakerName": "莉莉丝", "spriteId": "mentor_neutral", "text": "你醒得正好，亲爱的。" },
-        { "speakerId": "lilith", "speakerName": "莉莉丝", "spriteId": "mentor_neutral", "text": "雾莓镇不会等一个赖床的见习魔女太久。" },
-        { "speakerId": "me", "speakerName": "我", "text": "所以我现在算正式开始了？" },
-        { "speakerId": "lilith", "speakerName": "莉莉丝", "spriteId": "mentor_neutral", "text": "至少你终于愿意从小屋里起身了，这已经比很多誓言都可靠。" }
+        { "speakerId": "lilith", "speakerName": "莉莉丝", "spriteId": "mentor_neutral", "text": "终于醒了，亲爱的。我差点以为你打算把见习第一天也安排进梦里完成。" },
+        { "speakerId": "narrator", "speakerName": "旁白", "text": "莉莉丝正靠在门边，手里端着一只浅口瓷杯。她看上去像刚散步回来，连晨雾都没舍得碰乱她的头发。" },
+        { "speakerId": "me", "speakerName": "我", "text": "所以，从今天起就算正式开始了？" },
+        { "speakerId": "lilith", "speakerName": "莉莉丝", "spriteId": "mentor_neutral", "text": "当然。真正的魔女生活不是坐在屋里把自己想得很了不起，而是走出去，认识小镇，接下委托，也让别人慢慢认识你。" },
+        { "speakerId": "lilith", "speakerName": "莉莉丝", "spriteId": "mentor_neutral", "text": "你总得先学会和雾莓镇打招呼，它才会把日子一点点交给你。" }
       ],
       "options": [
         {
-          "text": "听她继续说下去",
+          "text": "听她安排今天",
           "effects": [
             { "type": "setFlag", "key": "met_lilith", "value": true },
             { "type": "setFlag", "key": "lilith_intro_seen", "value": true }
@@ -65,30 +68,27 @@
         }
       ],
       "dialogue": [
-        { "speakerId": "lilith", "speakerName": "莉莉丝", "spriteId": "mentor_neutral", "text": "在出门之前，先决定今天想把自己调成什么样子。" },
-        { "speakerId": "lilith", "speakerName": "莉莉丝", "spriteId": "mentor_neutral", "text": "专注一点，聪明一点，嘴甜一点，或者至少清醒一点。" }
+        { "speakerId": "lilith", "speakerName": "莉莉丝", "spriteId": "mentor_neutral", "text": "不过别急着摆出那种要和命运决斗的表情。第一天只需要一个还算像样的开头。" },
+        { "speakerId": "lilith", "speakerName": "莉莉丝", "spriteId": "mentor_neutral", "text": "告诉我吧，今天的你，准备先当个认真的孩子、好奇的孩子，还是肚子饿的孩子？" }
       ],
       "options": [
         {
-          "text": "先整理好桌上的魔法笔记",
+          "text": "我会努力成为合格的魔女",
           "effects": [
-            { "type": "addAttr", "key": "focus", "value": 1 },
             { "type": "setFlag", "key": "prologue_first_choice_done", "value": true }
           ],
           "next": { "eventId": "cottage_first_morning", "locationId": "home" }
         },
         {
-          "text": "翻开那本旧书看一眼",
+          "text": "雾莓镇今天会发生什么",
           "effects": [
-            { "type": "addAttr", "key": "intelligence", "value": 1 },
             { "type": "setFlag", "key": "prologue_first_choice_done", "value": true }
           ],
           "next": { "eventId": "cottage_first_morning", "locationId": "home" }
         },
         {
-          "text": "先学着自然地回她一句",
+          "text": "可以先吃早饭再开始吗",
           "effects": [
-            { "type": "addAttr", "key": "charisma", "value": 1 },
             { "type": "setFlag", "key": "prologue_first_choice_done", "value": true }
           ],
           "next": { "eventId": "cottage_first_morning", "locationId": "home" }
@@ -99,8 +99,9 @@
       "id": "cottage_first_morning",
       "title": "魔女小屋",
       "paragraphs": [
-        "小屋终于安静下来，只剩笔记、药草和窗边那团还没散尽的晨雾陪着你。",
-        "今天的雾莓镇就在门外。莉莉丝没有催促，只把决定权丢回给了你。"
+        "莉莉丝把杯子放到桌角，像是把今天也一并留给了你。魔女小屋不大，却什么都刚刚好：能读书，能配药，能发呆，也能在天黑以后带着一身风尘回来。",
+        "从今往后，这里会是你的据点。你可以在这儿整理状态、看看手头的事，再决定要不要推门去见雾莓镇。",
+        "门外的晨雾已经薄了些，石板路正一点点亮起来。第一天不会替你做决定，但它已经安静地等着你。"
       ],
       "options": [
         {
@@ -130,8 +131,9 @@
       "id": "fogberry_map_intro",
       "title": "雾莓镇",
       "paragraphs": [
-        "门一打开，湿冷又清醒的空气就贴上了你的脸。",
-        "雾莓镇在清晨里慢慢醒来，市集、杂货铺、教堂、森林和酒吧都像等待你做选择的分岔。"
+        "门一打开，带着水气的清晨空气就贴上了你的脸。魔女小屋静静立在镇边，像一枚被雾藏起来的句号。",
+        "沿着石板路往前，是最先热闹起来的市集和什么都能买到一点的杂货铺；再远些，有安静得像会把心事收好的圣殿、带着危险气味的魔物森林，还有白天懒洋洋、夜里才真正醒来的酒吧。",
+        "你不需要今天就弄明白这座镇子的全部秘密。从现在开始，雾莓镇已经向你开放，你可以自由探索它。"
       ],
       "options": [
         {
@@ -145,8 +147,8 @@
       "id": "market_first_visit",
       "title": "市集",
       "paragraphs": [
-        "白天的市集比小屋热闹太多。摊位、香气和讨价还价的声音把整条街都搅得很有精神。",
-        "你还不确定今天想从哪里开始，但这里至少能让你先看见这座镇子的呼吸。"
+        "白天的市集比魔女小屋热闹得多。摊位挨着摊位，水果香、香料味和讨价还价的声音把整条街都搅得很有精神。",
+        "如果想知道一座小镇今天过得怎么样，先来市集总不会错。这里像雾莓镇最会说话的一张脸。"
       ],
       "options": [
         {
@@ -218,8 +220,8 @@
       "id": "grocery_first_visit",
       "title": "杂货铺",
       "paragraphs": [
-        "货架上摆着糖果、空白本子和看起来会让人莫名多买一件的杂物。",
-        "你暂时还不准备认真购物，但这里显然会成为一个经常路过的地方。"
+        "不大的杂货铺里塞满了糖果、线团、空白本子、蜡烛和一些用途暧昧的小玩意儿，看上去总会让人顺手多拿一样。",
+        "店里有种让人安心的生活气息。就算今天什么都不买，你也知道自己以后会常来。"
       ],
       "options": [
         {
@@ -237,8 +239,8 @@
       "id": "church_first_visit",
       "title": "圣殿 / 教堂",
       "paragraphs": [
-        "长椅、烛火和低声祷词把这里衬得很轻，像一种不会追问你的安静。",
-        "你在门口停了停，还没决定要把什么愿望放进这里。"
+        "长椅、烛火和很轻的祷词把这里衬得安静又宽容，像一种不会追问你缘由的平静。",
+        "你在门口停了停，忽然觉得连呼吸都该放轻一点。某些心事，也许以后可以拿到这里来想。"
       ],
       "options": [
         {
@@ -259,8 +261,8 @@
       "id": "forest_edge_first_visit",
       "title": "魔物森林",
       "paragraphs": [
-        "林地边缘的潮气裹着泥土和草叶味，提醒你这里不只是风景。",
-        "现在还不是深入的时候，但你已经能感觉到它迟早会把你叫进去。"
+        "林地边缘的潮气裹着泥土和草叶味，安静得有些过分，像是连脚下的影子都比镇上更深一点。",
+        "这里当然不只是风景。你还没准备好立刻深入，但已经能感觉到，总有一天它会正式把你叫进去。"
       ],
       "options": [
         {
@@ -281,8 +283,8 @@
       "id": "bar_first_visit",
       "title": "酒吧",
       "paragraphs": [
-        "白天的酒吧还没真正醒过来，夜色和秘密都暂时躲在门后。",
-        "你记下了它的位置，准备以后再来。"
+        "白天的酒吧还没真正醒过来，门窗都带着一种懒洋洋的克制，像把夜里的喧闹和秘密先好好锁了起来。",
+        "你把它的位置记在心里。等雾莓镇入夜以后，这里多半会是另一副模样。"
       ],
       "options": [
         {
