@@ -6,11 +6,12 @@ import { ThemedText } from '@/components/themed-text';
 import { AppButton } from '@/core/ui/AppButton';
 import { AppChip } from '@/core/ui/AppChip';
 import { getLocalISODate } from '@/core/utils/date';
+import { selectWishStats } from '@/features/tools/wish-mart/selectors';
 import { ScreenScaffold } from '@/core/ui/ScreenScaffold';
 import { SectionCard } from '@/core/ui/SectionCard';
 import { uiTokens } from '@/core/theme/tokens';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { selectHabitCards, useDailyTimelineStore, useHabitStore, useTodoStore, type DailyTimelineRecord } from '@/stores';
+import { selectHabitCards, useDailyTimelineStore, useHabitStore, useTodoStore, useWishlistStore, type DailyTimelineRecord } from '@/stores';
 import { useMessengerStore } from '@/stores/messengerStore';
 
 const WEEKDAY_LABELS = ['日', '一', '二', '三', '四', '五', '六'];
@@ -92,6 +93,10 @@ function getTimelineCategoryMeta(category?: string, categoryColor?: string): Tim
     backgroundColor: normalizeHexColor(categoryColor) ? hexToRgba(color, 0.16) : presetMeta?.backgroundColor ?? hexToRgba(DEFAULT_TIMELINE_CATEGORY_COLOR, 0.12),
     borderColor: normalizeHexColor(categoryColor) ? hexToRgba(color, 0.28) : presetMeta?.borderColor ?? hexToRgba(DEFAULT_TIMELINE_CATEGORY_COLOR, 0.22),
   };
+}
+
+function formatWishMartMoney(priceCents: number): string {
+  return `¥${(priceCents / 100).toFixed(2)}`;
 }
 
 type CalendarDay = {
@@ -187,6 +192,7 @@ export default function ToolsHomeScreen() {
   const theme = useColorScheme() ?? 'light';
   const palette = uiTokens.colors[theme];
   const reportAccent = theme === 'light' ? '#6D8AAE' : '#88A9D4';
+  const wishMartRoute = '/(tabs)/tools/wish-mart' as never;
   const [quickOpen, setQuickOpen] = useState(false);
   const [visibleMonth, setVisibleMonth] = useState(() => getMonthStart(getDateOnly(new Date())));
   const [selectedDate, setSelectedDate] = useState(() => getDateOnly(new Date()));
@@ -211,6 +217,7 @@ export default function ToolsHomeScreen() {
 
   const todoItems = useTodoStore((s) => s.items);
   const toggleTodo = useTodoStore((s) => s.toggle);
+  const wishItems = useWishlistStore((s) => s.items);
   const trigger = useMessengerStore((s) => s.trigger);
   const dailyTimelineRecords = useDailyTimelineStore((s) => s.records);
   const addDailyTimelineRecord = useDailyTimelineStore((s) => s.addRecord);
@@ -232,6 +239,8 @@ export default function ToolsHomeScreen() {
     const done = todoItems.filter((t) => t.done).length;
     return { active, done, total: todoItems.length };
   }, [todoItems]);
+
+  const wishStats = useMemo(() => selectWishStats(wishItems), [wishItems]);
 
   const topTodos = useMemo(() => todoItems.filter((t) => !t.done).slice(0, 5), [todoItems]);
 
@@ -724,6 +733,46 @@ export default function ToolsHomeScreen() {
           </View>
         ) : null}
       </SectionCard>
+
+      <Pressable onPress={() => router.push(wishMartRoute)} style={({ pressed }) => [{ opacity: pressed ? 0.92 : 1 }]}>
+        <SectionCard elevated style={styles.sectionCard}>
+          <View style={styles.sectionTop}>
+            <View>
+              <ThemedText style={[styles.briefMeta, { color: reportAccent }]}>WISH MART</ThemedText>
+              <ThemedText style={styles.sectionTitle}>愿望小票</ThemedText>
+            </View>
+            <ThemedText style={[styles.countText, { color: palette.muted }]}>总计 {wishStats.totalCount}</ThemedText>
+          </View>
+
+          <View style={[styles.wishReceiptStrip, { backgroundColor: palette.input, borderColor: palette.border }]}>
+            <ThemedText style={[styles.wishReceiptText, { color: palette.muted }]}>WANT {formatWishMartMoney(wishStats.byStatus.want.amountCents)}</ThemedText>
+            <ThemedText style={[styles.wishReceiptDivider, { color: palette.border }]}>{'//'}</ThemedText>
+            <ThemedText style={[styles.wishReceiptText, { color: palette.muted }]}>PAID {formatWishMartMoney(wishStats.byStatus.bought.amountCents)}</ThemedText>
+            <ThemedText style={[styles.wishReceiptDivider, { color: palette.border }]}>{'//'}</ThemedText>
+            <ThemedText style={[styles.wishReceiptText, { color: palette.muted }]}>TOTAL {formatWishMartMoney(wishStats.totalAmountCents)}</ThemedText>
+          </View>
+
+          <View style={styles.wishSummaryRow}>
+            <View style={styles.wishStampWrap}>
+              <View style={[styles.wishStamp, { borderColor: reportAccent }]}>
+                <ThemedText style={[styles.wishStampText, { color: reportAccent }]}>WISH</ThemedText>
+              </View>
+              <ThemedText style={[styles.sectionSub, { color: palette.muted }]}>
+                先记下来，再决定要不要买。
+              </ThemedText>
+            </View>
+            <View style={styles.wishStatusTotals}>
+              <ThemedText style={[styles.wishStatusText, { color: palette.muted }]}>想买 {wishStats.byStatus.want.count}</ThemedText>
+              <ThemedText style={[styles.wishStatusText, { color: palette.muted }]}>暂缓 {wishStats.byStatus.paused.count}</ThemedText>
+            </View>
+          </View>
+
+          <View style={styles.cardFooter}>
+            <ThemedText style={[styles.sectionSub, { color: palette.muted }]}>不是账本，只是消费冷静区。</ThemedText>
+            <AppChip title="去看看" onPress={() => router.push(wishMartRoute)} />
+          </View>
+        </SectionCard>
+      </Pressable>
 
       <Pressable onPress={() => router.push('/(tabs)/tools/habits')} style={({ pressed }) => [{ opacity: pressed ? 0.92 : 1 }]}>
         <SectionCard elevated style={styles.sectionCard}>
@@ -1310,6 +1359,32 @@ const styles = StyleSheet.create({
   quickPanel: { gap: uiTokens.spacing.md },
   quickActions: { flexDirection: 'row', gap: uiTokens.spacing.sm },
   quickAction: { flex: 1 },
+  wishReceiptStrip: {
+    borderWidth: 1,
+    borderRadius: uiTokens.radius.md,
+    paddingHorizontal: uiTokens.spacing.md,
+    paddingVertical: uiTokens.spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: uiTokens.spacing.xs,
+    flexWrap: 'wrap',
+  },
+  wishReceiptText: { fontSize: 12, lineHeight: 16, fontWeight: '900', letterSpacing: 0.4 },
+  wishReceiptDivider: { fontSize: 11, lineHeight: 14, fontWeight: '900' },
+  wishSummaryRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: uiTokens.spacing.md },
+  wishStampWrap: { flex: 1, gap: uiTokens.spacing.sm },
+  wishStamp: {
+    alignSelf: 'flex-start',
+    borderWidth: 2,
+    borderRadius: 9,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    transform: [{ rotate: '-8deg' }],
+  },
+  wishStampText: { fontSize: 13, lineHeight: 16, fontWeight: '900', letterSpacing: 1.1 },
+  wishStatusTotals: { alignItems: 'flex-end', gap: 4 },
+  wishStatusText: { fontSize: 12, lineHeight: 16, fontWeight: '900' },
   sectionCard: { gap: uiTokens.spacing.md },
   sectionTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: uiTokens.spacing.md },
   sectionTitle: uiTokens.typography.sectionTitle,

@@ -3,6 +3,7 @@ import { useTodoStore } from './todoStore';
 
 export { useHabitStore, selectHabitCards, type HabitCard, type Habit, type HabitLog, type HabitLogStatus } from './habitStore';
 export { useTodoStore, selectVisibleTodos, type Todo } from './todoStore';
+export { useWishlistStore, type WishItem, type WishStatus } from './wishlistStore';
 export {
   useDailyTimelineStore,
   selectDailyTimelineRecordsByDate,
