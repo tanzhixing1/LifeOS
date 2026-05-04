@@ -9,7 +9,7 @@ import { ScreenScaffold } from '@/core/ui/ScreenScaffold';
 import { SectionCard } from '@/core/ui/SectionCard';
 import { uiTokens } from '@/core/theme/tokens';
 import { WISH_MART_BARCODE, WISH_RECEIPT_DIVIDER, WISH_STATUS_META, WISH_STATUS_ORDER } from '@/features/tools/wish-mart/constants';
-import { selectWishCooldownDays, selectWishItemsByStatus, selectWishStats } from '@/features/tools/wish-mart/selectors';
+import { getWishCooldownLabel, getWishMartBriefing, selectWishItemsByStatus, selectWishStats } from '@/features/tools/wish-mart/selectors';
 import { WishEditorModal } from '@/features/tools/wish-mart/ui/WishEditorModal';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { type WishItem, type WishStatus, useWishlistStore } from '@/stores';
@@ -25,15 +25,14 @@ function formatMoney(priceCents: number): string {
 }
 
 function formatCreatedLabel(item: WishItem): string {
+  const cooldownLabel = getWishCooldownLabel(item);
   const createdDate = new Date(item.createdAt).toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' });
   if (item.status === 'bought' && item.boughtAt) {
     const boughtDate = new Date(item.boughtAt).toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' });
-    return `已购 ${boughtDate} · 记于 ${createdDate}`;
+    return `${cooldownLabel} · ${boughtDate} · 记于 ${createdDate}`;
   }
 
-  const cooldownDays = selectWishCooldownDays(item);
-  if (cooldownDays <= 0) return `今天记下 · ${createdDate}`;
-  return `冷静 ${cooldownDays} 天 · ${createdDate}`;
+  return `${cooldownLabel} · 记于 ${createdDate}`;
 }
 
 function getExpandedTitle(status: WishStatus): string {
@@ -63,6 +62,7 @@ export default function WishMartScreen() {
   const [expandedStatus, setExpandedStatus] = useState<WishStatus | null>(null);
 
   const stats = useMemo(() => selectWishStats(items), [items]);
+  const briefing = useMemo(() => getWishMartBriefing(stats, items), [items, stats]);
   const expandedItems = useMemo(
     () => (expandedStatus ? selectWishItemsByStatus(items, expandedStatus) : []),
     [expandedStatus, items]
@@ -171,7 +171,7 @@ export default function WishMartScreen() {
             </ThemedText>
           </View>
           <ThemedText style={[styles.totalHint, { color: receiptMuted }]}>
-            点击上面的状态行查看明细；再次点击即可收起。
+            {briefing}
           </ThemedText>
         </View>
       </View>
