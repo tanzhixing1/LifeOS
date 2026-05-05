@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
@@ -16,6 +16,18 @@ const ITEM_TYPE_LABELS: Record<ItemType, string> = {
   special: '特殊',
 };
 
+type BagFilterId = 'all' | 'daily' | ItemType;
+
+const BAG_FILTERS: { id: BagFilterId; label: string }[] = [
+  { id: 'all', label: '全部' },
+  { id: 'consumable', label: '消耗品' },
+  { id: 'daily', label: '日用品' },
+  { id: 'material', label: '材料' },
+  { id: 'gift', label: '礼物' },
+  { id: 'key', label: '重要物品' },
+  { id: 'special', label: '特殊' },
+];
+
 export default function GameBagScreen() {
   const pageBg = useThemeColor({ light: '#F2EEE8', dark: '#171819' }, 'background');
   const cardBg = useThemeColor({ light: '#FDF8ED', dark: '#1C1F22' }, 'background');
@@ -26,10 +38,23 @@ export default function GameBagScreen() {
   const accent = useThemeColor({ light: '#B88452', dark: '#D8B174' }, 'tint');
 
   const items = useInventoryStore((s) => s.items);
+  const [selectedFilterId, setSelectedFilterId] = useState<BagFilterId>('all');
   const stacks = useMemo(
     () => Object.values(items).sort((a, b) => b.updatedAt - a.updatedAt),
     [items]
   );
+  const filteredStacks = useMemo(
+    () =>
+      stacks.filter((stack) => {
+        if (selectedFilterId === 'all') return true;
+        const item = gameItems[stack.itemId];
+        if (!item) return false;
+        if (selectedFilterId === 'daily') return (item.tags ?? []).includes('日用');
+        return item.type === selectedFilterId;
+      }),
+    [selectedFilterId, stacks]
+  );
+  const hasAnyItem = stacks.length > 0;
 
   return (
     <ThemedView style={[styles.screen, { backgroundColor: pageBg }]}>
@@ -48,18 +73,58 @@ export default function GameBagScreen() {
           <ThemedText style={[styles.subtitle, { color: mutedText }]}>这里存放你购入的小物。</ThemedText>
         </View>
 
-        {stacks.length === 0 ? (
+        <View style={styles.filterSection}>
+          <ThemedText style={[styles.sectionTitle, { color: textColor }]}>分类</ThemedText>
+          <View style={styles.filterTabs}>
+            {BAG_FILTERS.map((filter) => {
+              const active = filter.id === selectedFilterId;
+              return (
+                <Pressable
+                  key={filter.id}
+                  onPress={() => setSelectedFilterId(filter.id)}
+                  style={({ pressed }) => [
+                    styles.filterTab,
+                    {
+                      borderColor: active ? accent : cardBorder,
+                      backgroundColor: active ? 'rgba(184,132,82,0.16)' : cardBg,
+                      opacity: pressed ? 0.82 : 1,
+                    },
+                  ]}>
+                  <ThemedText style={[styles.filterText, { color: active ? accent : mutedText }]}>{filter.label}</ThemedText>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+
+        {!hasAnyItem ? (
           <View style={[styles.emptyCard, { backgroundColor: cardBg, borderColor: cardBorder }]}>
             <ThemedText style={[styles.emptyTitle, { color: textColor }]}>背包还是空的。</ThemedText>
             <ThemedText style={[styles.emptyText, { color: mutedText }]}>去杂货铺采购点什么吧。</ThemedText>
+            <Pressable
+              onPress={() => router.push('/(tabs)/game/shop')}
+              style={({ pressed }) => [
+                styles.shopButton,
+                {
+                  borderColor: accent,
+                  backgroundColor: pressed ? 'rgba(184,132,82,0.24)' : 'rgba(184,132,82,0.12)',
+                },
+              ]}>
+              <ThemedText style={[styles.shopButtonText, { color: accent }]}>去杂货铺采购</ThemedText>
+            </Pressable>
+          </View>
+        ) : filteredStacks.length === 0 ? (
+          <View style={[styles.emptyCard, { backgroundColor: cardBg, borderColor: cardBorder }]}>
+            <ThemedText style={[styles.emptyTitle, { color: textColor }]}>这个分类暂时没有物品。</ThemedText>
+            <ThemedText style={[styles.emptyText, { color: mutedText }]}>换个分类看看，或去杂货铺补点小物。</ThemedText>
           </View>
         ) : (
           <View style={styles.itemList}>
-            {stacks.map((stack) => {
+            {filteredStacks.map((stack) => {
               const item = gameItems[stack.itemId];
-              const name = item?.name ?? stack.itemId;
-              const description = item?.description ?? '尚未登记的小物。';
-              const icon = item?.icon ?? '🎒';
+              const name = item?.name ?? '未知物品';
+              const description = item?.description ?? '这个物品还没有详细说明。';
+              const icon = item?.icon ?? '📦';
               const tags = item?.tags ?? [];
 
               return (
@@ -111,9 +176,16 @@ const styles = StyleSheet.create({
   kicker: { fontSize: 10, lineHeight: 12, fontWeight: '900', letterSpacing: 1.4 },
   bigTitle: { fontSize: 28, lineHeight: 34, fontWeight: '900', letterSpacing: 0.2, textAlign: 'center' },
   subtitle: { fontSize: 13, lineHeight: 18, fontWeight: '800', textAlign: 'center' },
+  filterSection: { gap: 8 },
+  sectionTitle: { fontSize: 15, lineHeight: 19, fontWeight: '900' },
+  filterTabs: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  filterTab: { minHeight: 34, borderWidth: 1, borderRadius: 999, paddingHorizontal: 11, paddingVertical: 8, justifyContent: 'center' },
+  filterText: { fontSize: 12, lineHeight: 15, fontWeight: '900' },
   emptyCard: { borderWidth: 1, borderRadius: 18, padding: 18, gap: 6, alignItems: 'center' },
   emptyTitle: { fontSize: 16, lineHeight: 20, fontWeight: '900' },
   emptyText: { fontSize: 13, lineHeight: 18, fontWeight: '800', textAlign: 'center' },
+  shopButton: { minHeight: 38, borderWidth: 1.5, borderRadius: 12, paddingHorizontal: 14, alignItems: 'center', justifyContent: 'center', marginTop: 6 },
+  shopButtonText: { fontSize: 12, lineHeight: 15, fontWeight: '900' },
   itemList: { gap: 10 },
   itemCard: { borderWidth: 1, borderRadius: 18, padding: 12, flexDirection: 'row', gap: 12 },
   iconBubble: { width: 48, height: 48, borderRadius: 14, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },

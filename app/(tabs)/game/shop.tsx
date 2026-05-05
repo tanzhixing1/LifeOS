@@ -218,7 +218,7 @@ function ProductCard({ product, accent, borderColor, mutedText, textColor, owned
         {product.description}
       </ThemedText>
 
-      <ThemedText style={[styles.ownedText, { color: mutedText }]}>持有：{ownedQuantity}</ThemedText>
+      {ownedQuantity > 0 ? <ThemedText style={[styles.ownedText, { color: mutedText }]}>持有：{ownedQuantity}</ThemedText> : null}
 
       <View style={styles.tagRow}>
         {(product.tags ?? []).map((tag) => (
