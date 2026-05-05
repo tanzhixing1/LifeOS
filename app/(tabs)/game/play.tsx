@@ -24,6 +24,7 @@ import { validateContentPack } from '@/features/game/engine/validate';
 import { EventRenderer } from '@/features/game/ui/EventRenderer';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { useGameStore } from '@/stores';
+import { useWalletStore } from '@/stores/walletStore';
 
 type PlayRouteParams = {
   mode?: string | string[];
@@ -68,6 +69,7 @@ export default function GamePlayScreen() {
   const locationNameById = useMemo(() => new Map(mainLocations.map((location) => [location.id, location.name])), []);
 
   const player = useGameStore((s) => s.player);
+  const gold = useWalletStore((s) => s.currencies.gold);
   const rewardLogs = useGameStore((s) => s.rewardLogs);
   const setPlayer = useGameStore((s) => s.setPlayer);
   const setLocation = useGameStore((s) => s.setLocation);
@@ -227,7 +229,7 @@ export default function GamePlayScreen() {
         <View style={[styles.statusBar, { backgroundColor: cardBg, borderColor: cardBorder }]}>
           <ThemedText style={[styles.statusText, { color: mutedText }]}>{formatGameTime(player.gameTime)}</ThemedText>
           <ThemedText style={[styles.statusText, { color: mutedText }]}>疲劳 {player.vitals.fatigue}</ThemedText>
-          <ThemedText style={[styles.statusText, { color: mutedText }]}>金钱 {player.wallet.money}G</ThemedText>
+          <ThemedText style={[styles.statusText, { color: mutedText }]}>金币 {gold}G</ThemedText>
         </View>
       </View>
 

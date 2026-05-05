@@ -7,6 +7,7 @@ import { ThemedText } from '@/components/themed-text';
 import { formatGameTime } from '@/features/game/engine/time';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { useGameStore } from '@/stores';
+import { useWalletStore } from '@/stores/walletStore';
 
 const SIDE_DOCK_PANEL_WIDTH = 92;
 const SIDE_DOCK_HANDLE_WIDTH = 30;
@@ -42,6 +43,7 @@ export function GameGlobalMenu() {
   const [sideDockOpen, setSideDockOpen] = useState(false);
 
   const player = useGameStore((s) => s.player);
+  const gold = useWalletStore((s) => s.currencies.gold);
   const saveSlots = useGameStore((s) => s.saveSlots);
   const save = useGameStore((s) => s.save);
   const load = useGameStore((s) => s.load);
@@ -51,7 +53,7 @@ export function GameGlobalMenu() {
     { key: 'bodyStatus', label: '身体状态', value: player.vitals.bodyStatus },
     { key: 'fatigue', label: '疲劳', value: player.vitals.fatigue },
     { key: 'intoxication', label: '醉酒', value: player.vitals.intoxication },
-    { key: 'money', label: '金钱', value: `${player.wallet.money}G` },
+    { key: 'money', label: '金币', value: `${gold}G` },
     { key: 'gameTime', label: '游戏时间', value: formatGameTime(player.gameTime) },
   ];
 
@@ -140,6 +142,18 @@ export function GameGlobalMenu() {
             ]}>
             <ThemedText style={styles.buttonIcon}>📜</ThemedText>
             <ThemedText style={[styles.buttonLabel, { color: mutedText }]}>日志</ThemedText>
+          </Pressable>
+          <Pressable
+            onPress={() => {
+              setSideDockOpen(false);
+              router.push('/(tabs)/game/bag');
+            }}
+            style={({ pressed }) => [
+              styles.button,
+              { borderColor: cardBorder, backgroundColor: pressed ? 'rgba(209,187,222,0.22)' : 'rgba(209,187,222,0.10)' },
+            ]}>
+            <ThemedText style={styles.buttonIcon}>🎒</ThemedText>
+            <ThemedText style={[styles.buttonLabel, { color: mutedText }]}>魔女背包</ThemedText>
           </Pressable>
         </View>
 

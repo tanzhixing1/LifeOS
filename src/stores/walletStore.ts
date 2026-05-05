@@ -16,7 +16,7 @@ export type WalletState = {
 
 function defaultCurrencies(): Record<CurrencyType, number> {
   return {
-    gold: 120,
+    gold: 100,
     gem: 0,
     ticket: 0,
   };

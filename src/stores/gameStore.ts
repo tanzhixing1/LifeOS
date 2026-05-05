@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
+import { mainContentPack } from '@/features/game/content/main';
 import { addMinutesToGameTime, normalizeGameTime } from '@/features/game/engine/time';
 import type { GameTime, PlayerState, PlayerVitals, PlayerWallet } from '@/features/game/engine/types';
 import { zustandStorage } from '@/services/storage/zustandStorage';
@@ -19,6 +20,7 @@ export const DEFAULT_ATTRS = {
 } as const;
 
 const DEFAULT_LOCATION = 'home';
+const START_EVENT_ID = mainContentPack.startEventId;
 
 export const DEFAULT_GAME_TIME: GameTime = {
   day: 1,
@@ -158,7 +160,7 @@ function normalizeSaveSlot(slot: SaveSlot | null | undefined): SaveSlot | null {
 }
 
 function normalizeEventId(eventId?: string): string {
-  return typeof eventId === 'string' && eventId.length > 0 ? eventId : 'prologue_wake_up';
+  return typeof eventId === 'string' && eventId.length > 0 ? eventId : START_EVENT_ID;
 }
 
 function normalizeOptionalEventId(eventId?: string): string | undefined {
@@ -201,7 +203,7 @@ function normalizeOptionalLocation(locationId?: string): string | undefined {
 
 function defaultState(): GameState {
   const player = normalizePlayer();
-  const eventId = 'prologue_wake_up';
+  const eventId = START_EVENT_ID;
   return {
     player,
     eventId,

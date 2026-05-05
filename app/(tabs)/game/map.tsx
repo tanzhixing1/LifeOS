@@ -11,6 +11,7 @@ import { formatGameTime, formatOpenHours, isLocationOpen } from '@/features/game
 import type { EventNode, GameLocation, PlayerState } from '@/features/game/engine/types';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { useGameStore } from '@/stores';
+import { useWalletStore } from '@/stores/walletStore';
 
 export default function GameMapScreen() {
   const pageBg = useThemeColor({ light: '#F2EEE8', dark: '#171819' }, 'background');
@@ -23,6 +24,7 @@ export default function GameMapScreen() {
   const eventsById = useMemo(() => new Map<string, EventNode>(pack.events.map((event) => [event.id, event])), [pack.events]);
 
   const player = useGameStore((s) => s.player);
+  const gold = useWalletStore((s) => s.currencies.gold);
   const setLocation = useGameStore((s) => s.setLocation);
   const gotoEvent = useGameStore((s) => s.gotoEvent);
   const markResumeMap = useGameStore((s) => s.markResumeMap);
@@ -67,7 +69,7 @@ export default function GameMapScreen() {
         <View style={[styles.statusBar, { backgroundColor: cardBg, borderColor: cardBorder }]}>
           <ThemedText style={[styles.statusText, { color: mutedText }]}>{formatGameTime(player.gameTime)}</ThemedText>
           <ThemedText style={[styles.statusText, { color: mutedText }]}>疲劳 {player.vitals.fatigue}</ThemedText>
-          <ThemedText style={[styles.statusText, { color: mutedText }]}>金钱 {player.wallet.money}G</ThemedText>
+          <ThemedText style={[styles.statusText, { color: mutedText }]}>金币 {gold}G</ThemedText>
         </View>
       </View>
 

@@ -9,6 +9,8 @@ import type { EventNode } from '@/features/game/engine/types';
 import { formatGameTime } from '@/features/game/engine/time';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { useGameStore } from '@/stores';
+import { useInventoryStore } from '@/stores/inventoryStore';
+import { useWalletStore } from '@/stores/walletStore';
 
 const HOME_LOCATION_ID = 'home';
 
@@ -28,21 +30,30 @@ export default function GameHomeScreen() {
   const lastScreen = useGameStore((s) => s.lastScreen);
   const lastEventId = useGameStore((s) => s.lastEventId);
   const resumeTarget = useGameStore((s) => s.resumeTarget);
+  const gold = useWalletStore((s) => s.currencies.gold);
   const mana = player.attrs.mana ?? 0;
   const hp = player.attrs.hp ?? 0;
   const sanity = player.attrs.sanity ?? 0;
 
   const eventsById = useMemo(() => new Map<string, EventNode>(mainContentPack.events.map((event) => [event.id, event])), []);
 
-  function startPrologue() {
+  function enterPrologue() {
     const store = useGameStore.getState();
     const startEventId = mainContentPack.startEventId;
+
     store.setLocation(HOME_LOCATION_ID);
     store.gotoEvent(startEventId);
     store.markResumePlay(startEventId, HOME_LOCATION_ID);
     router.replace(
       `/(tabs)/game/play?mode=start&eventId=${encodeURIComponent(startEventId)}&locationId=${encodeURIComponent(HOME_LOCATION_ID)}`
     );
+  }
+
+  function startNewJourney() {
+    useGameStore.getState().resetGame();
+    useWalletStore.getState().resetWallet();
+    useInventoryStore.getState().resetInventory();
+    enterPrologue();
   }
 
   function continueJourney() {
@@ -72,7 +83,7 @@ export default function GameHomeScreen() {
       return;
     }
 
-    startPrologue();
+    enterPrologue();
   }
 
   function confirmResetGame() {
@@ -81,7 +92,7 @@ export default function GameHomeScreen() {
       {
         text: '确认开始',
         style: 'destructive',
-        onPress: startPrologue,
+        onPress: startNewJourney,
       },
     ]);
   }
@@ -106,7 +117,7 @@ export default function GameHomeScreen() {
               <ThemedText style={[styles.quickStatusText, { color: hudMuted }]}>疲劳 {player.vitals.fatigue}</ThemedText>
             </View>
             <View style={[styles.quickStatusPill, { borderColor: hudBorder }]}>
-              <ThemedText style={[styles.quickStatusText, { color: hudMuted }]}>金钱 {player.wallet.money}G</ThemedText>
+              <ThemedText style={[styles.quickStatusText, { color: hudMuted }]}>金币 {gold}G</ThemedText>
             </View>
           </View>
           <View style={styles.hudRow}>
@@ -145,7 +156,7 @@ export default function GameHomeScreen() {
         <View style={[styles.parchment, { backgroundColor: cardBg, borderColor: cardBorder }]}>
           <ThemedText style={[styles.parchmentHint, { color: mutedText }]}>序章入口和继续旅程现在会按不同恢复规则进入游戏。</ThemedText>
 
-          <Pressable onPress={startPrologue} style={({ pressed }) => [styles.mapNode, { borderColor: accent, opacity: pressed ? 0.92 : 1 }]}>
+          <Pressable onPress={enterPrologue} style={({ pressed }) => [styles.mapNode, { borderColor: accent, opacity: pressed ? 0.92 : 1 }]}>
             <ThemedText style={[styles.mapNodeText, { color: accent }]}>从序章开始</ThemedText>
             <ThemedText style={[styles.mapNodeSub, { color: mutedText }]}>强制进入 prologue_wake_up</ThemedText>
           </Pressable>
@@ -155,13 +166,6 @@ export default function GameHomeScreen() {
             style={({ pressed }) => [styles.shopNode, { borderColor: cardBorder, opacity: pressed ? 0.9 : 1 }]}>
             <ThemedText style={[styles.shopNodeText, { color: accent }]}>雾莓采购单</ThemedText>
             <ThemedText style={[styles.shopNodeSub, { color: mutedText }]}>采购日常小物，放进魔女背包</ThemedText>
-          </Pressable>
-
-          <Pressable
-            onPress={() => router.push('/(tabs)/game/bag')}
-            style={({ pressed }) => [styles.shopNode, { borderColor: cardBorder, opacity: pressed ? 0.9 : 1 }]}>
-            <ThemedText style={[styles.shopNodeText, { color: accent }]}>魔女背包</ThemedText>
-            <ThemedText style={[styles.shopNodeSub, { color: mutedText }]}>查看已经购入的小物</ThemedText>
           </Pressable>
 
           <View style={styles.primaryArea}>
