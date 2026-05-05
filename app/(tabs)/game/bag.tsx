@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import React, { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -28,6 +28,8 @@ const BAG_FILTERS: { id: BagFilterId; label: string }[] = [
   { id: 'special', label: '特殊' },
 ];
 
+const DAILY_TAGS = new Set(['日用', '早餐', '补给', '饮品', '照明', '小屋', '记录', '学习', '收纳', '清洁', '零食', '便携', '市集']);
+
 export default function GameBagScreen() {
   const pageBg = useThemeColor({ light: '#F2EEE8', dark: '#171819' }, 'background');
   const cardBg = useThemeColor({ light: '#FDF8ED', dark: '#1C1F22' }, 'background');
@@ -39,6 +41,7 @@ export default function GameBagScreen() {
 
   const items = useInventoryStore((s) => s.items);
   const [selectedFilterId, setSelectedFilterId] = useState<BagFilterId>('all');
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const stacks = useMemo(
     () => Object.values(items).sort((a, b) => b.updatedAt - a.updatedAt),
     [items]
@@ -49,12 +52,19 @@ export default function GameBagScreen() {
         if (selectedFilterId === 'all') return true;
         const item = gameItems[stack.itemId];
         if (!item) return false;
-        if (selectedFilterId === 'daily') return (item.tags ?? []).includes('日用');
+        if (selectedFilterId === 'daily') return (item.tags ?? []).some((tag) => DAILY_TAGS.has(tag));
         return item.type === selectedFilterId;
       }),
     [selectedFilterId, stacks]
   );
   const hasAnyItem = stacks.length > 0;
+  const selectedStack = selectedItemId ? items[selectedItemId] : undefined;
+  const selectedItem = selectedStack ? gameItems[selectedStack.itemId] : undefined;
+  const selectedName = selectedItem?.name ?? '未知物品';
+  const selectedDescription = selectedItem?.description ?? '这个物品还没有详细说明。';
+  const selectedIcon = selectedItem?.icon ?? '📦';
+  const selectedTags = selectedItem?.tags ?? [];
+  const selectedTypeLabel = selectedItem?.type ? ITEM_TYPE_LABELS[selectedItem.type] : '未分类';
 
   return (
     <ThemedView style={[styles.screen, { backgroundColor: pageBg }]}>
@@ -75,7 +85,7 @@ export default function GameBagScreen() {
 
         <View style={styles.filterSection}>
           <ThemedText style={[styles.sectionTitle, { color: textColor }]}>分类</ThemedText>
-          <View style={styles.filterTabs}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterTabs}>
             {BAG_FILTERS.map((filter) => {
               const active = filter.id === selectedFilterId;
               return (
@@ -94,7 +104,7 @@ export default function GameBagScreen() {
                 </Pressable>
               );
             })}
-          </View>
+          </ScrollView>
         </View>
 
         {!hasAnyItem ? (
@@ -115,52 +125,78 @@ export default function GameBagScreen() {
           </View>
         ) : filteredStacks.length === 0 ? (
           <View style={[styles.emptyCard, { backgroundColor: cardBg, borderColor: cardBorder }]}>
-            <ThemedText style={[styles.emptyTitle, { color: textColor }]}>这个分类暂时没有物品。</ThemedText>
-            <ThemedText style={[styles.emptyText, { color: mutedText }]}>换个分类看看，或去杂货铺补点小物。</ThemedText>
+            <ThemedText style={[styles.emptyTitle, { color: textColor }]}>这里暂时还没有物品。</ThemedText>
           </View>
         ) : (
-          <View style={styles.itemList}>
+          <View style={styles.itemGrid}>
             {filteredStacks.map((stack) => {
               const item = gameItems[stack.itemId];
               const name = item?.name ?? '未知物品';
-              const description = item?.description ?? '这个物品还没有详细说明。';
               const icon = item?.icon ?? '📦';
-              const tags = item?.tags ?? [];
 
               return (
-                <View key={stack.itemId} style={[styles.itemCard, { backgroundColor: cardBg, borderColor: cardBorder }]}>
-                  <View style={[styles.iconBubble, { backgroundColor: cardAlt, borderColor: cardBorder }]}>
-                    <ThemedText style={styles.itemIcon}>{icon}</ThemedText>
+                <Pressable
+                  key={stack.itemId}
+                  onPress={() => setSelectedItemId(stack.itemId)}
+                  style={({ pressed }) => [
+                    styles.itemCell,
+                    {
+                      backgroundColor: cardBg,
+                      borderColor: cardBorder,
+                      opacity: pressed ? 0.84 : 1,
+                    },
+                  ]}>
+                  <View style={[styles.quantityBadge, { backgroundColor: cardAlt, borderColor: cardBorder }]}>
+                    <ThemedText style={[styles.quantityText, { color: accent }]}>×{stack.quantity}</ThemedText>
                   </View>
-                  <View style={styles.itemBody}>
-                    <View style={styles.itemTitleRow}>
-                      <ThemedText style={[styles.itemName, { color: textColor }]} numberOfLines={1}>
-                        {name}
-                      </ThemedText>
-                      <ThemedText style={[styles.quantity, { color: accent }]}>×{stack.quantity}</ThemedText>
-                    </View>
-                    <ThemedText style={[styles.itemDescription, { color: mutedText }]} numberOfLines={2}>
-                      {description}
-                    </ThemedText>
-                    <View style={styles.metaRow}>
-                      {item?.type ? (
-                        <View style={[styles.metaTag, { borderColor: cardBorder }]}>
-                          <ThemedText style={[styles.metaText, { color: mutedText }]}>{ITEM_TYPE_LABELS[item.type]}</ThemedText>
-                        </View>
-                      ) : null}
-                      {tags.map((tag) => (
-                        <View key={`${stack.itemId}.${tag}`} style={[styles.metaTag, { borderColor: cardBorder }]}>
-                          <ThemedText style={[styles.metaText, { color: mutedText }]}>{tag}</ThemedText>
-                        </View>
-                      ))}
-                    </View>
-                  </View>
-                </View>
+                  <ThemedText style={styles.gridIcon}>{icon}</ThemedText>
+                  <ThemedText style={[styles.gridName, { color: textColor }]} numberOfLines={1}>
+                    {name}
+                  </ThemedText>
+                </Pressable>
               );
             })}
           </View>
         )}
       </ScrollView>
+
+      <Modal visible={Boolean(selectedStack)} transparent animationType="fade" onRequestClose={() => setSelectedItemId(null)}>
+        <View style={styles.modalBackdrop}>
+          <View style={[styles.detailCard, { backgroundColor: cardBg, borderColor: cardBorder }]}>
+            <View style={[styles.detailIconBubble, { backgroundColor: cardAlt, borderColor: cardBorder }]}>
+              <ThemedText style={styles.detailIcon}>{selectedIcon}</ThemedText>
+            </View>
+            <ThemedText style={[styles.detailName, { color: textColor }]}>{selectedName}</ThemedText>
+            <ThemedText style={[styles.detailDescription, { color: mutedText }]}>{selectedDescription}</ThemedText>
+
+            <View style={styles.detailMetaRow}>
+              <View style={[styles.metaTag, { borderColor: cardBorder }]}>
+                <ThemedText style={[styles.metaText, { color: mutedText }]}>数量 ×{selectedStack?.quantity ?? 0}</ThemedText>
+              </View>
+              <View style={[styles.metaTag, { borderColor: cardBorder }]}>
+                <ThemedText style={[styles.metaText, { color: mutedText }]}>{selectedTypeLabel}</ThemedText>
+              </View>
+              {selectedTags.map((tag) => (
+                <View key={`detail.${selectedStack?.itemId}.${tag}`} style={[styles.metaTag, { borderColor: cardBorder }]}>
+                  <ThemedText style={[styles.metaText, { color: mutedText }]}>{tag}</ThemedText>
+                </View>
+              ))}
+            </View>
+
+            <Pressable
+              onPress={() => setSelectedItemId(null)}
+              style={({ pressed }) => [
+                styles.closeButton,
+                {
+                  borderColor: accent,
+                  backgroundColor: pressed ? 'rgba(184,132,82,0.24)' : 'rgba(184,132,82,0.12)',
+                },
+              ]}>
+              <ThemedText style={[styles.closeButtonText, { color: accent }]}>关闭</ThemedText>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </ThemedView>
   );
 }
@@ -178,7 +214,7 @@ const styles = StyleSheet.create({
   subtitle: { fontSize: 13, lineHeight: 18, fontWeight: '800', textAlign: 'center' },
   filterSection: { gap: 8 },
   sectionTitle: { fontSize: 15, lineHeight: 19, fontWeight: '900' },
-  filterTabs: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  filterTabs: { gap: 8, paddingRight: 4 },
   filterTab: { minHeight: 34, borderWidth: 1, borderRadius: 999, paddingHorizontal: 11, paddingVertical: 8, justifyContent: 'center' },
   filterText: { fontSize: 12, lineHeight: 15, fontWeight: '900' },
   emptyCard: { borderWidth: 1, borderRadius: 18, padding: 18, gap: 6, alignItems: 'center' },
@@ -186,16 +222,52 @@ const styles = StyleSheet.create({
   emptyText: { fontSize: 13, lineHeight: 18, fontWeight: '800', textAlign: 'center' },
   shopButton: { minHeight: 38, borderWidth: 1.5, borderRadius: 12, paddingHorizontal: 14, alignItems: 'center', justifyContent: 'center', marginTop: 6 },
   shopButtonText: { fontSize: 12, lineHeight: 15, fontWeight: '900' },
-  itemList: { gap: 10 },
-  itemCard: { borderWidth: 1, borderRadius: 18, padding: 12, flexDirection: 'row', gap: 12 },
-  iconBubble: { width: 48, height: 48, borderRadius: 14, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
-  itemIcon: { fontSize: 25, lineHeight: 30 },
-  itemBody: { flex: 1, minWidth: 0, gap: 6 },
-  itemTitleRow: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 },
-  itemName: { flex: 1, fontSize: 15, lineHeight: 19, fontWeight: '900' },
-  quantity: { fontSize: 14, lineHeight: 18, fontWeight: '900' },
-  itemDescription: { fontSize: 12, lineHeight: 17, fontWeight: '800' },
-  metaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 5 },
+  itemGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 9 },
+  itemCell: {
+    width: '31.5%',
+    aspectRatio: 1,
+    borderWidth: 1,
+    borderRadius: 16,
+    padding: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    shadowColor: '#3D352E',
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
+  },
+  quantityBadge: {
+    position: 'absolute',
+    right: 6,
+    top: 6,
+    minWidth: 28,
+    minHeight: 20,
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quantityText: { fontSize: 10, lineHeight: 12, fontWeight: '900' },
+  gridIcon: { fontSize: 30, lineHeight: 36 },
+  gridName: { width: '100%', fontSize: 11, lineHeight: 14, fontWeight: '900', textAlign: 'center' },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(31,26,22,0.42)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 22,
+  },
+  detailCard: { width: '100%', maxWidth: 360, borderWidth: 1, borderRadius: 20, padding: 18, alignItems: 'center', gap: 10 },
+  detailIconBubble: { width: 64, height: 64, borderRadius: 18, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  detailIcon: { fontSize: 34, lineHeight: 40 },
+  detailName: { fontSize: 18, lineHeight: 23, fontWeight: '900', textAlign: 'center' },
+  detailDescription: { fontSize: 13, lineHeight: 19, fontWeight: '800', textAlign: 'center' },
+  detailMetaRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 6 },
   metaTag: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 7, paddingVertical: 3 },
   metaText: { fontSize: 10, lineHeight: 12, fontWeight: '900' },
+  closeButton: { minHeight: 38, alignSelf: 'stretch', borderWidth: 1.5, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginTop: 2 },
+  closeButtonText: { fontSize: 12, lineHeight: 15, fontWeight: '900' },
 });
