@@ -6,12 +6,16 @@ import type { GameState, RewardLog } from '@/stores/gameStore';
 import { useGameStore } from '@/stores/gameStore';
 import type { Habit, HabitLog } from '@/stores/habitStore';
 import { useHabitStore } from '@/stores/habitStore';
+import type { InventoryItemStack } from '@/stores/inventoryStore';
+import { useInventoryStore } from '@/stores/inventoryStore';
 import type { LabFragment } from '@/stores/fragmentStore';
 import { useFragmentStore } from '@/stores/fragmentStore';
 import type { MessengerMessage, MessengerState } from '@/stores/messengerStore';
 import { useMessengerStore } from '@/stores/messengerStore';
 import type { Todo } from '@/stores/todoStore';
 import { useTodoStore } from '@/stores/todoStore';
+import type { CurrencyType } from '@/stores/walletStore';
+import { useWalletStore } from '@/stores/walletStore';
 
 export type BackupSnapshot = {
   version: 1;
@@ -33,6 +37,12 @@ export type BackupSnapshot = {
       player: GameState['player'];
       eventId: GameState['eventId'];
       saveSlots: GameState['saveSlots'];
+    };
+    wallet: {
+      currencies: Record<CurrencyType, number>;
+    };
+    inventory: {
+      items: Record<string, InventoryItemStack>;
     };
     fragments: {
       fragments: LabFragment[];
@@ -64,6 +74,9 @@ export type BackupSummary = {
   gameAttrs: Record<string, number>;
   gameLocation?: string;
   gameEventId: string;
+  walletCurrencies: Record<CurrencyType, number>;
+  inventoryItemKinds: number;
+  inventoryTotalQuantity: number;
   inspirationsTotal: number;
   moodsTotal: number;
   rewardLogsTotal: number;
@@ -74,6 +87,8 @@ export function buildBackupSnapshot(): BackupSnapshot {
   const dailyTimelineState = useDailyTimelineStore.getState();
   const habitState = useHabitStore.getState();
   const gameState = useGameStore.getState();
+  const walletState = useWalletStore.getState();
+  const inventoryState = useInventoryStore.getState();
   const fragmentState = useFragmentStore.getState();
   const messengerState = useMessengerStore.getState();
   const aiState = useAIStore.getState();
@@ -98,6 +113,12 @@ export function buildBackupSnapshot(): BackupSnapshot {
         player: gameState.player,
         eventId: gameState.eventId,
         saveSlots: gameState.saveSlots,
+      },
+      wallet: {
+        currencies: walletState.currencies,
+      },
+      inventory: {
+        items: inventoryState.items,
       },
       fragments: {
         fragments: fragmentState.fragments,
@@ -125,6 +146,7 @@ export function buildBackupSummary(snapshot: BackupSnapshot = buildBackupSnapsho
   const habits = Object.values(snapshot.data.habits.habits);
   const fragments = snapshot.data.fragments.fragments;
   const attrs = snapshot.data.game.player.attrs;
+  const inventoryItems = Object.values(snapshot.data.inventory.items);
 
   return {
     todosTotal: todos.length,
@@ -146,6 +168,9 @@ export function buildBackupSummary(snapshot: BackupSnapshot = buildBackupSnapsho
     },
     gameLocation: snapshot.data.game.player.location,
     gameEventId: snapshot.data.game.eventId,
+    walletCurrencies: snapshot.data.wallet.currencies,
+    inventoryItemKinds: inventoryItems.length,
+    inventoryTotalQuantity: inventoryItems.reduce((total, item) => total + item.quantity, 0),
     inspirationsTotal: fragments.filter((fragment) => fragment.type === 'inspiration').length,
     moodsTotal: fragments.filter((fragment) => fragment.type === 'mood').length,
     rewardLogsTotal: snapshot.data.rewards.logs.length,

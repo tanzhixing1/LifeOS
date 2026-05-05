@@ -154,7 +154,14 @@ export default function GameHomeScreen() {
             onPress={() => router.push('/(tabs)/game/shop')}
             style={({ pressed }) => [styles.shopNode, { borderColor: cardBorder, opacity: pressed ? 0.9 : 1 }]}>
             <ThemedText style={[styles.shopNodeText, { color: accent }]}>雾莓采购单</ThemedText>
-            <ThemedText style={[styles.shopNodeSub, { color: mutedText }]}>Shop-1 预览：只看商品，不扣钱</ThemedText>
+            <ThemedText style={[styles.shopNodeSub, { color: mutedText }]}>采购日常小物，放进魔女背包</ThemedText>
+          </Pressable>
+
+          <Pressable
+            onPress={() => router.push('/(tabs)/game/bag')}
+            style={({ pressed }) => [styles.shopNode, { borderColor: cardBorder, opacity: pressed ? 0.9 : 1 }]}>
+            <ThemedText style={[styles.shopNodeText, { color: accent }]}>魔女背包</ThemedText>
+            <ThemedText style={[styles.shopNodeSub, { color: mutedText }]}>查看已经购入的小物</ThemedText>
           </Pressable>
 
           <View style={styles.primaryArea}>

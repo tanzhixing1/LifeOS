@@ -9,6 +9,8 @@ import { getProductsByCategory } from '@/features/game/content/main/shops/produc
 import { mainShopConfig } from '@/features/game/content/main/shops/shopConfig';
 import type { CurrencyType, ProductCategoryId, ShopProduct } from '@/features/game/content/main/shops/types';
 import { useThemeColor } from '@/hooks/use-theme-color';
+import { useInventoryStore } from '@/stores/inventoryStore';
+import { useWalletStore } from '@/stores/walletStore';
 
 const CURRENCY_LABELS: Record<CurrencyType, string> = {
   gold: '金币',
@@ -31,12 +33,43 @@ export default function GameShopScreen() {
   const textColor = useThemeColor({ light: '#3D352E', dark: '#E4E4E7' }, 'text');
   const accent = useThemeColor({ light: '#B88452', dark: '#D8B174' }, 'tint');
 
+  const currencies = useWalletStore((s) => s.currencies);
+  const canAfford = useWalletStore((s) => s.canAfford);
+  const spendCurrency = useWalletStore((s) => s.spendCurrency);
+  const addItem = useInventoryStore((s) => s.addItem);
+  const inventoryItems = useInventoryStore((s) => s.items);
+
   const [selectedCategoryId, setSelectedCategoryId] = useState<ProductCategoryId>('daily');
   const selectedCategory = shopCategories.find((category) => category.id === selectedCategoryId) ?? shopCategories[0]!;
   const products = selectedCategory.unlocked ? getProductsByCategory(selectedCategory.id) : [];
 
-  function previewProduct(product: ShopProduct) {
-    Alert.alert(product.name, 'Shop-2 将开放购买：购买后会扣除货币并放入背包。');
+  function selectCategory(categoryId: ProductCategoryId) {
+    const category = shopCategories.find((item) => item.id === categoryId);
+    setSelectedCategoryId(categoryId);
+    if (category && !category.unlocked) {
+      Alert.alert(category.name, category.lockedReason ?? '后续开放。');
+    }
+  }
+
+  function buyProduct(product: ShopProduct) {
+    if (product.category !== 'daily') {
+      Alert.alert(product.name, '这个分类暂未开放购买。');
+      return;
+    }
+
+    if (!canAfford(product.currency, product.price)) {
+      Alert.alert('余额不足', `${CURRENCY_LABELS[product.currency]}不足，暂时不能购入 ${product.name}。`);
+      return;
+    }
+
+    const spent = spendCurrency(product.currency, product.price);
+    if (!spent) {
+      Alert.alert('余额不足', `${CURRENCY_LABELS[product.currency]}不足，暂时不能购入 ${product.name}。`);
+      return;
+    }
+
+    addItem(product.itemId, 1);
+    Alert.alert('购买成功', `已购入：${product.name} ×1`);
   }
 
   return (
@@ -62,11 +95,11 @@ export default function GameShopScreen() {
         </View>
 
         <View style={[styles.walletCard, { backgroundColor: cardAlt, borderColor: cardBorder }]}>
-          <ThemedText style={[styles.sectionTitle, { color: textColor }]}>货币栏占位</ThemedText>
+          <ThemedText style={[styles.sectionTitle, { color: textColor }]}>钱包</ThemedText>
           <View style={styles.currencyRow}>
-            <CurrencyPill label="金币" value="Shop-2 接入" accent={accent} mutedText={mutedText} borderColor={cardBorder} />
-            <CurrencyPill label="魔晶" value="Shop-2 接入" accent={accent} mutedText={mutedText} borderColor={cardBorder} />
-            <CurrencyPill label="抽奖券" value="后续开放" accent={accent} mutedText={mutedText} borderColor={cardBorder} />
+            <CurrencyPill label="金币" value={`${currencies.gold ?? 0}`} accent={accent} mutedText={mutedText} borderColor={cardBorder} />
+            <CurrencyPill label="魔晶" value={`${currencies.gem ?? 0}`} accent={accent} mutedText={mutedText} borderColor={cardBorder} />
+            <CurrencyPill label="抽奖券" value={`${currencies.ticket ?? 0}`} accent={accent} mutedText={mutedText} borderColor={cardBorder} />
           </View>
         </View>
 
@@ -78,7 +111,7 @@ export default function GameShopScreen() {
               return (
                 <Pressable
                   key={category.id}
-                  onPress={() => setSelectedCategoryId(category.id)}
+                  onPress={() => selectCategory(category.id)}
                   style={({ pressed }) => [
                     styles.categoryTab,
                     {
@@ -126,7 +159,8 @@ export default function GameShopScreen() {
                   borderColor={cardBorder}
                   mutedText={mutedText}
                   textColor={textColor}
-                  onPreview={() => previewProduct(product)}
+                  ownedQuantity={inventoryItems[product.itemId]?.quantity ?? 0}
+                  onBuy={() => buyProduct(product)}
                 />
               ))}
             </View>
@@ -160,10 +194,11 @@ type ProductCardProps = {
   borderColor: string;
   mutedText: string;
   textColor: string;
-  onPreview: () => void;
+  ownedQuantity: number;
+  onBuy: () => void;
 };
 
-function ProductCard({ product, accent, borderColor, mutedText, textColor, onPreview }: ProductCardProps) {
+function ProductCard({ product, accent, borderColor, mutedText, textColor, ownedQuantity, onBuy }: ProductCardProps) {
   return (
     <View style={[styles.productCard, { borderColor, backgroundColor: 'rgba(255,255,255,0.42)' }]}>
       <View style={styles.productTop}>
@@ -183,6 +218,8 @@ function ProductCard({ product, accent, borderColor, mutedText, textColor, onPre
         {product.description}
       </ThemedText>
 
+      <ThemedText style={[styles.ownedText, { color: mutedText }]}>持有：{ownedQuantity}</ThemedText>
+
       <View style={styles.tagRow}>
         {(product.tags ?? []).map((tag) => (
           <View key={`${product.id}.${tag}`} style={[styles.tag, { borderColor }]}>
@@ -192,15 +229,15 @@ function ProductCard({ product, accent, borderColor, mutedText, textColor, onPre
       </View>
 
       <Pressable
-        onPress={onPreview}
+        onPress={onBuy}
         style={({ pressed }) => [
-          styles.previewButton,
+          styles.buyButton,
           {
             borderColor: accent,
             backgroundColor: pressed ? 'rgba(184,132,82,0.24)' : 'rgba(184,132,82,0.12)',
           },
         ]}>
-        <ThemedText style={[styles.previewButtonText, { color: accent }]}>预览</ThemedText>
+        <ThemedText style={[styles.buyButtonText, { color: accent }]}>购买</ThemedText>
       </Pressable>
     </View>
   );
@@ -249,9 +286,10 @@ const styles = StyleSheet.create({
   productName: { fontSize: 14, lineHeight: 18, fontWeight: '900' },
   productPrice: { fontSize: 11, lineHeight: 14, fontWeight: '900' },
   productDescription: { flexGrow: 1, fontSize: 12, lineHeight: 17, fontWeight: '800' },
+  ownedText: { fontSize: 11, lineHeight: 14, fontWeight: '900' },
   tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 5 },
   tag: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 7, paddingVertical: 3 },
   tagText: { fontSize: 10, lineHeight: 12, fontWeight: '900' },
-  previewButton: { minHeight: 36, borderWidth: 1.5, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  previewButtonText: { fontSize: 12, lineHeight: 15, fontWeight: '900' },
+  buyButton: { minHeight: 36, borderWidth: 1.5, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  buyButtonText: { fontSize: 12, lineHeight: 15, fontWeight: '900' },
 });
