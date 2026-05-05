@@ -1,0 +1,175 @@
+[
+  {
+    "id": "lilith_first_meeting",
+    "title": "导师的闲逛",
+    "presentation": "visualNovel",
+    "backgroundId": "room_morning",
+    "characters": [
+      {
+        "id": "lilith",
+        "name": "莉莉丝",
+        "position": "right",
+        "defaultSpriteId": "mentor_neutral",
+        "defaultExpression": "愉快"
+      }
+    ],
+    "dialogue": [
+      {
+        "speakerId": "lilith",
+        "speakerName": "莉莉丝",
+        "spriteId": "mentor_neutral",
+        "text": "你也来市集？不错，亲爱的，你终于学会用脚而不是用幻想生活了。"
+      },
+      {
+        "speakerId": "me",
+        "speakerName": "我",
+        "text": "你为什么总能比我先一步出现在该出现的地方？"
+      },
+      {
+        "speakerId": "lilith",
+        "speakerName": "莉莉丝",
+        "spriteId": "mentor_neutral",
+        "text": "因为我比你更愿意按时出门。另一个原因，等你再长大一点我再告诉你。"
+      }
+    ],
+    "options": [
+      {
+        "text": "问她今天该先做什么",
+        "effects": [
+          {
+            "type": "setFlag",
+            "key": "lilith_first_meeting_done",
+            "value": true
+          },
+          {
+            "type": "addAttr",
+            "key": "focus",
+            "value": 1
+          }
+        ],
+        "next": {
+          "eventId": "market_first_visit",
+          "locationId": "market"
+        }
+      },
+      {
+        "text": "假装自己一点也不惊讶",
+        "effects": [
+          {
+            "type": "setFlag",
+            "key": "lilith_first_meeting_done",
+            "value": true
+          },
+          {
+            "type": "addAttr",
+            "key": "charisma",
+            "value": 1
+          }
+        ],
+        "next": {
+          "eventId": "market_first_visit",
+          "locationId": "market"
+        }
+      }
+    ]
+  },
+  {
+    "id": "lilith_talk_church",
+    "title": "莉莉丝",
+    "paragraphs": [
+      "莉莉丝坐在最后一排，手里拿着一本倒着翻的祷文。",
+      "她抬眼看你，像是早就知道你会在这个时间出现。"
+    ],
+    "options": [
+      {
+        "text": "回到镇上",
+        "effects": [
+          {
+            "type": "advanceTime",
+            "minutes": 10
+          }
+        ],
+        "route": "map"
+      }
+    ]
+  },
+  {
+    "id": "lilith_talk_market",
+    "title": "莉莉丝",
+    "paragraphs": [
+      "莉莉丝正站在摊位前，认真比较两瓶颜色可疑的小甜水。",
+      "她朝你晃了晃手里的瓶子，笑得像是已经替你做完了选择。"
+    ],
+    "options": [
+      {
+        "text": "陪她聊一会儿",
+        "effects": [
+          {
+            "type": "advanceTime",
+            "minutes": 10
+          }
+        ],
+        "route": "map"
+      }
+    ]
+  },
+  {
+    "id": "lilith_talk_grocery",
+    "title": "莉莉丝",
+    "paragraphs": [
+      "莉莉丝把一盒包装过度的糖果放回货架，又若无其事地重新拿起。",
+      "她显然把这种无意义的比较当成了一种娱乐。"
+    ],
+    "options": [
+      {
+        "text": "听她点评糖果",
+        "effects": [
+          {
+            "type": "advanceTime",
+            "minutes": 10
+          }
+        ],
+        "route": "map"
+      }
+    ]
+  },
+  {
+    "id": "lilith_talk_bar",
+    "title": "莉莉丝",
+    "paragraphs": [
+      "莉莉丝坐在吧台边，杯子里浮着一片发光的薄荷叶。",
+      "她向你举杯，像夜色本身也欠她一句问候。"
+    ],
+    "options": [
+      {
+        "text": "在吧台边坐一会儿",
+        "effects": [
+          {
+            "type": "advanceTime",
+            "minutes": 10
+          }
+        ],
+        "route": "map"
+      }
+    ]
+  },
+  {
+    "id": "lilith_reality_chat",
+    "title": "近况",
+    "paragraphs": [
+      "莉莉丝正了正头，像是从很远的地方听见了现实的回声。"
+    ],
+    "options": [
+      {
+        "text": "回到镇上",
+        "effects": [
+          {
+            "type": "advanceTime",
+            "minutes": 10
+          }
+        ],
+        "route": "map"
+      }
+    ]
+  }
+]

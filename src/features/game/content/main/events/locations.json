@@ -1,0 +1,171 @@
+[
+  {
+    "id": "market_first_visit",
+    "title": "市集",
+    "paragraphs": [
+      "白天的市集比魔女小屋热闹得多。摊位挨着摊位，水果香、香料味和讨价还价的声音把整条街都搅得很有精神。",
+      "如果想知道一座小镇今天过得怎么样，先来市集总不会错。这里像雾莓镇最会说话的一张脸。"
+    ],
+    "options": [
+      {
+        "text": "慢慢看看摊位",
+        "effects": [
+          {
+            "type": "addAttr",
+            "key": "focus",
+            "value": 1
+          },
+          {
+            "type": "advanceTime",
+            "minutes": 20
+          }
+        ],
+        "next": {
+          "eventId": "market_first_visit",
+          "locationId": "market"
+        }
+      },
+      {
+        "text": "和摊主打听几句消息",
+        "effects": [
+          {
+            "type": "addAttr",
+            "key": "friendship",
+            "value": 1
+          },
+          {
+            "type": "advanceTime",
+            "minutes": 20
+          }
+        ],
+        "next": {
+          "eventId": "market_first_visit",
+          "locationId": "market"
+        }
+      },
+      {
+        "text": "顺着那道熟悉的笑声找过去",
+        "conditions": [
+          {
+            "type": "flag",
+            "key": "lilith_first_meeting_done",
+            "value": false
+          }
+        ],
+        "next": {
+          "eventId": "lilith_first_meeting",
+          "locationId": "market"
+        }
+      },
+      {
+        "text": "离开",
+        "route": "map"
+      }
+    ]
+  },
+  {
+    "id": "grocery_first_visit",
+    "title": "杂货铺",
+    "paragraphs": [
+      "不大的杂货铺里塞满了糖果、线团、空白本子、蜡烛和一些用途暧昧的小玩意儿，看上去总会让人顺手多拿一样。",
+      "店里有种让人安心的生活气息。就算今天什么都不买，你也知道自己以后会常来。"
+    ],
+    "options": [
+      {
+        "text": "把环境记下来",
+        "effects": [
+          {
+            "type": "advanceTime",
+            "minutes": 10
+          }
+        ],
+        "next": {
+          "eventId": "grocery_first_visit",
+          "locationId": "grocery"
+        }
+      },
+      {
+        "text": "离开",
+        "route": "map"
+      }
+    ]
+  },
+  {
+    "id": "church_first_visit",
+    "title": "圣殿 / 教堂",
+    "paragraphs": [
+      "长椅、烛火和很轻的祷词把这里衬得安静又宽容，像一种不会追问你缘由的平静。",
+      "你在门口停了停，忽然觉得连呼吸都该放轻一点。某些心事，也许以后可以拿到这里来想。"
+    ],
+    "options": [
+      {
+        "text": "安静地坐一会儿",
+        "effects": [
+          {
+            "type": "addAttr",
+            "key": "sanity",
+            "value": 1
+          },
+          {
+            "type": "advanceTime",
+            "minutes": 20
+          }
+        ],
+        "next": {
+          "eventId": "church_first_visit",
+          "locationId": "church"
+        }
+      },
+      {
+        "text": "离开",
+        "route": "map"
+      }
+    ]
+  },
+  {
+    "id": "forest_edge_first_visit",
+    "title": "魔物森林",
+    "paragraphs": [
+      "林地边缘的潮气裹着泥土和草叶味，安静得有些过分，像是连脚下的影子都比镇上更深一点。",
+      "这里当然不只是风景。你还没准备好立刻深入，但已经能感觉到，总有一天它会正式把你叫进去。"
+    ],
+    "options": [
+      {
+        "text": "在边缘观察一会儿",
+        "effects": [
+          {
+            "type": "addAttr",
+            "key": "proficiency",
+            "value": 1
+          },
+          {
+            "type": "advanceTime",
+            "minutes": 20
+          }
+        ],
+        "next": {
+          "eventId": "forest_edge_first_visit",
+          "locationId": "forest"
+        }
+      },
+      {
+        "text": "先不进去",
+        "route": "map"
+      }
+    ]
+  },
+  {
+    "id": "bar_first_visit",
+    "title": "酒吧",
+    "paragraphs": [
+      "白天的酒吧还没真正醒过来，门窗都带着一种懒洋洋的克制，像把夜里的喧闹和秘密先好好锁了起来。",
+      "你把它的位置记在心里。等雾莓镇入夜以后，这里多半会是另一副模样。"
+    ],
+    "options": [
+      {
+        "text": "离开",
+        "route": "map"
+      }
+    ]
+  }
+]

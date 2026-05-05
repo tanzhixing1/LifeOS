@@ -1,0 +1,274 @@
+[
+  {
+    "id": "prologue_wake_up",
+    "title": "雾莓镇的清晨",
+    "presentation": "visualNovel",
+    "backgroundId": "room_morning",
+    "dialogue": [
+      {
+        "speakerId": "narrator",
+        "speakerName": "旁白",
+        "text": "晨光从斜斜的小窗照进来，落在梁上晾着的药草束上，把整间魔女小屋都晒出一点暖意。"
+      },
+      {
+        "speakerId": "narrator",
+        "speakerName": "旁白",
+        "text": "木桌上摊着昨晚抄到一半的笔记，旧书压着几片卷边的叶子，杯底还留着草药茶微苦的香气。"
+      },
+      {
+        "speakerId": "narrator",
+        "speakerName": "旁白",
+        "text": "透过窗子，雾莓镇还裹在轻雾里。石板路、低矮屋顶和远处的钟楼都像刚准备醒来。"
+      },
+      {
+        "speakerId": "me",
+        "speakerName": "我",
+        "text": "今天就是第一天了。再紧张，也该像个真正的见习魔女那样出门。"
+      },
+      {
+        "speakerId": "narrator",
+        "speakerName": "旁白",
+        "text": "门外传来瓷杯轻碰木盘的声音，有人显然比你更早开始了今天。"
+      }
+    ],
+    "options": [
+      {
+        "text": "起身去看看",
+        "effects": [
+          {
+            "type": "setFlag",
+            "key": "prologue_started",
+            "value": true
+          }
+        ],
+        "next": {
+          "eventId": "prologue_lilith_intro",
+          "locationId": "home"
+        }
+      }
+    ]
+  },
+  {
+    "id": "prologue_lilith_intro",
+    "title": "莉莉丝",
+    "presentation": "visualNovel",
+    "backgroundId": "room_morning",
+    "characters": [
+      {
+        "id": "lilith",
+        "name": "莉莉丝",
+        "position": "right",
+        "defaultSpriteId": "mentor_neutral",
+        "defaultExpression": "平静"
+      }
+    ],
+    "dialogue": [
+      {
+        "speakerId": "lilith",
+        "speakerName": "莉莉丝",
+        "spriteId": "mentor_neutral",
+        "text": "终于醒了，亲爱的。我差点以为你打算把见习第一天也安排进梦里完成。"
+      },
+      {
+        "speakerId": "narrator",
+        "speakerName": "旁白",
+        "text": "莉莉丝正靠在门边，手里端着一只浅口瓷杯。她看上去像刚散步回来，连晨雾都没舍得碰乱她的头发。"
+      },
+      {
+        "speakerId": "me",
+        "speakerName": "我",
+        "text": "所以，从今天起就算正式开始了？"
+      },
+      {
+        "speakerId": "lilith",
+        "speakerName": "莉莉丝",
+        "spriteId": "mentor_neutral",
+        "text": "当然。真正的魔女生活不是坐在屋里把自己想得很了不起，而是走出去，认识小镇，接下委托，也让别人慢慢认识你。"
+      },
+      {
+        "speakerId": "lilith",
+        "speakerName": "莉莉丝",
+        "spriteId": "mentor_neutral",
+        "text": "你总得先学会和雾莓镇打招呼，它才会把日子一点点交给你。"
+      }
+    ],
+    "options": [
+      {
+        "text": "听她安排今天",
+        "effects": [
+          {
+            "type": "setFlag",
+            "key": "met_lilith",
+            "value": true
+          },
+          {
+            "type": "setFlag",
+            "key": "lilith_intro_seen",
+            "value": true
+          }
+        ],
+        "next": {
+          "eventId": "prologue_first_choice",
+          "locationId": "home"
+        }
+      }
+    ]
+  },
+  {
+    "id": "prologue_first_choice",
+    "title": "今天想怎么开始",
+    "presentation": "visualNovel",
+    "backgroundId": "room_morning",
+    "characters": [
+      {
+        "id": "lilith",
+        "name": "莉莉丝",
+        "position": "right",
+        "defaultSpriteId": "mentor_neutral",
+        "defaultExpression": "平静"
+      }
+    ],
+    "dialogue": [
+      {
+        "speakerId": "lilith",
+        "speakerName": "莉莉丝",
+        "spriteId": "mentor_neutral",
+        "text": "不过别急着摆出那种要和命运决斗的表情。第一天只需要一个还算像样的开头。"
+      },
+      {
+        "speakerId": "lilith",
+        "speakerName": "莉莉丝",
+        "spriteId": "mentor_neutral",
+        "text": "告诉我吧，今天的你，准备先当个认真的孩子、好奇的孩子，还是肚子饿的孩子？"
+      }
+    ],
+    "options": [
+      {
+        "text": "我会努力成为合格的魔女",
+        "effects": [
+          {
+            "type": "setFlag",
+            "key": "prologue_first_choice_done",
+            "value": true
+          }
+        ],
+        "next": {
+          "eventId": "cottage_first_morning",
+          "locationId": "home"
+        }
+      },
+      {
+        "text": "雾莓镇今天会发生什么",
+        "effects": [
+          {
+            "type": "setFlag",
+            "key": "prologue_first_choice_done",
+            "value": true
+          }
+        ],
+        "next": {
+          "eventId": "cottage_first_morning",
+          "locationId": "home"
+        }
+      },
+      {
+        "text": "可以先吃早饭再开始吗",
+        "effects": [
+          {
+            "type": "setFlag",
+            "key": "prologue_first_choice_done",
+            "value": true
+          }
+        ],
+        "next": {
+          "eventId": "cottage_first_morning",
+          "locationId": "home"
+        }
+      }
+    ]
+  },
+  {
+    "id": "cottage_first_morning",
+    "title": "魔女小屋",
+    "paragraphs": [
+      "莉莉丝把杯子放到桌角，像是把今天也一并留给了你。魔女小屋不大，却什么都刚刚好：能读书，能配药，能发呆，也能在天黑以后带着一身风尘回来。",
+      "从今往后，这里会是你的据点。你可以在这儿整理状态、看看手头的事，再决定要不要推门去见雾莓镇。",
+      "门外的晨雾已经薄了些，石板路正一点点亮起来。第一天不会替你做决定，但它已经安静地等着你。"
+    ],
+    "options": [
+      {
+        "text": "整理一下桌面和笔记",
+        "effects": [
+          {
+            "type": "addAttr",
+            "key": "focus",
+            "value": 1
+          },
+          {
+            "type": "advanceTime",
+            "minutes": 20
+          }
+        ],
+        "next": {
+          "eventId": "cottage_first_morning",
+          "locationId": "home"
+        }
+      },
+      {
+        "text": "翻翻旧书上的边注",
+        "conditions": [
+          {
+            "type": "attr",
+            "key": "intelligence",
+            "op": "gte",
+            "value": 1
+          }
+        ],
+        "effects": [
+          {
+            "type": "addAttr",
+            "key": "intelligence",
+            "value": 1
+          },
+          {
+            "type": "advanceTime",
+            "minutes": 20
+          }
+        ],
+        "next": {
+          "eventId": "cottage_first_morning",
+          "locationId": "home"
+        }
+      },
+      {
+        "text": "推门出去看看雾莓镇",
+        "next": {
+          "eventId": "fogberry_map_intro",
+          "locationId": "home"
+        }
+      }
+    ]
+  },
+  {
+    "id": "fogberry_map_intro",
+    "title": "雾莓镇",
+    "paragraphs": [
+      "门一打开，带着水气的清晨空气就贴上了你的脸。魔女小屋静静立在镇边，像一枚被雾藏起来的句号。",
+      "沿着石板路往前，是最先热闹起来的市集和什么都能买到一点的杂货铺；再远些，有安静得像会把心事收好的圣殿、带着危险气味的魔物森林，还有白天懒洋洋、夜里才真正醒来的酒吧。",
+      "你不需要今天就弄明白这座镇子的全部秘密。从现在开始，雾莓镇已经向你开放，你可以自由探索它。"
+    ],
+    "options": [
+      {
+        "text": "沿着石板路走进镇子",
+        "effects": [
+          {
+            "type": "setFlag",
+            "key": "fogberry_map_intro_seen",
+            "value": true
+          }
+        ],
+        "route": "map"
+      }
+    ]
+  }
+]

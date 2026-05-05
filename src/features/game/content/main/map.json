@@ -1,0 +1,52 @@
+[
+  {
+    "id": "home",
+    "name": "魔女小屋",
+    "neighbors": [
+      "market",
+      "grocery",
+      "church"
+    ]
+  },
+  {
+    "id": "market",
+    "name": "市集",
+    "neighbors": [
+      "home",
+      "grocery",
+      "church",
+      "forest"
+    ]
+  },
+  {
+    "id": "grocery",
+    "name": "杂货铺",
+    "neighbors": [
+      "home",
+      "market"
+    ]
+  },
+  {
+    "id": "church",
+    "name": "圣殿 / 教堂",
+    "neighbors": [
+      "home",
+      "market"
+    ]
+  },
+  {
+    "id": "forest",
+    "name": "魔物森林",
+    "neighbors": [
+      "market",
+      "bar"
+    ]
+  },
+  {
+    "id": "bar",
+    "name": "酒吧",
+    "neighbors": [
+      "forest"
+    ]
+  }
+]
