@@ -150,6 +150,13 @@ export default function GameHomeScreen() {
             <ThemedText style={[styles.mapNodeSub, { color: mutedText }]}>强制进入 prologue_wake_up</ThemedText>
           </Pressable>
 
+          <Pressable
+            onPress={() => router.push('/(tabs)/game/shop')}
+            style={({ pressed }) => [styles.shopNode, { borderColor: cardBorder, opacity: pressed ? 0.9 : 1 }]}>
+            <ThemedText style={[styles.shopNodeText, { color: accent }]}>雾莓采购单</ThemedText>
+            <ThemedText style={[styles.shopNodeSub, { color: mutedText }]}>Shop-1 预览：只看商品，不扣钱</ThemedText>
+          </Pressable>
+
           <View style={styles.primaryArea}>
             <Pressable onPress={continueJourney} style={({ pressed }) => [styles.primaryBtn, { backgroundColor: accent, opacity: pressed ? 0.92 : 1 }]}>
               <ThemedText style={styles.primaryBtnText}>继续旅程</ThemedText>
@@ -188,6 +195,9 @@ const styles = StyleSheet.create({
   mapNode: { borderWidth: 1.5, borderRadius: 18, paddingVertical: 22, paddingHorizontal: 14, alignItems: 'center', gap: 6 },
   mapNodeText: { fontSize: 16, lineHeight: 20, fontWeight: '900' },
   mapNodeSub: { fontSize: 12, lineHeight: 16, fontWeight: '800' },
+  shopNode: { borderWidth: 1, borderRadius: 18, paddingVertical: 16, paddingHorizontal: 14, alignItems: 'center', gap: 5, backgroundColor: 'rgba(255,255,255,0.18)' },
+  shopNodeText: { fontSize: 15, lineHeight: 19, fontWeight: '900' },
+  shopNodeSub: { fontSize: 11, lineHeight: 15, fontWeight: '800' },
   primaryArea: { paddingTop: 6, gap: 10 },
   primaryBtn: { borderRadius: 18, paddingVertical: 14, alignItems: 'center' },
   primaryBtnText: { color: '#fff', fontSize: 16, lineHeight: 20, fontWeight: '900' },
