@@ -4,11 +4,13 @@ import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { evaluateCondition } from '@/features/game/engine/executor';
 import { shopCategories } from '@/features/game/content/main/shops/categories';
 import { getProductsByCategory } from '@/features/game/content/main/shops/products';
 import { mainShopConfig } from '@/features/game/content/main/shops/shopConfig';
-import type { CurrencyType, ProductCategoryId, ShopProduct } from '@/features/game/content/main/shops/types';
+import type { CurrencyType, ProductCategoryId, ShopCategory, ShopProduct } from '@/features/game/content/main/shops/types';
 import { useThemeColor } from '@/hooks/use-theme-color';
+import { useGameStore } from '@/stores/gameStore';
 import { useInventoryStore } from '@/stores/inventoryStore';
 import { useWalletStore } from '@/stores/walletStore';
 
@@ -38,22 +40,31 @@ export default function GameShopScreen() {
   const spendCurrency = useWalletStore((s) => s.spendCurrency);
   const addItem = useInventoryStore((s) => s.addItem);
   const inventoryItems = useInventoryStore((s) => s.items);
+  const player = useGameStore((s) => s.player);
 
   const [selectedCategoryId, setSelectedCategoryId] = useState<ProductCategoryId>('daily');
   const selectedCategory = shopCategories.find((category) => category.id === selectedCategoryId) ?? shopCategories[0]!;
-  const products = selectedCategory.unlocked ? getProductsByCategory(selectedCategory.id) : [];
+  const selectedCategoryUnlocked = isCategoryUnlocked(selectedCategory);
+  const products = selectedCategoryUnlocked ? getProductsByCategory(selectedCategory.id) : [];
+
+  function isCategoryUnlocked(category: ShopCategory) {
+    if (category.unlocked) return true;
+    if (!category.unlockRequirements || category.unlockRequirements.length === 0) return false;
+    return category.unlockRequirements.every((condition) => evaluateCondition(condition, player));
+  }
 
   function selectCategory(categoryId: ProductCategoryId) {
     const category = shopCategories.find((item) => item.id === categoryId);
     setSelectedCategoryId(categoryId);
-    if (category && !category.unlocked) {
+    if (category && !isCategoryUnlocked(category)) {
       Alert.alert(category.name, category.lockedReason ?? '后续开放。');
     }
   }
 
   function buyProduct(product: ShopProduct) {
-    if (product.category !== 'daily') {
-      Alert.alert(product.name, '这个分类暂未开放购买。');
+    const productCategory = shopCategories.find((category) => category.id === product.category);
+    if (!productCategory || !isCategoryUnlocked(productCategory)) {
+      Alert.alert('分类未解锁', productCategory?.lockedReason ?? '这个分类暂未开放。');
       return;
     }
 
@@ -108,6 +119,7 @@ export default function GameShopScreen() {
           <View style={styles.categoryTabs}>
             {shopCategories.map((category) => {
               const active = category.id === selectedCategoryId;
+              const unlocked = isCategoryUnlocked(category);
               return (
                 <Pressable
                   key={category.id}
@@ -121,8 +133,8 @@ export default function GameShopScreen() {
                     },
                   ]}>
                   <ThemedText style={[styles.categoryName, { color: active ? accent : textColor }]}>{category.name}</ThemedText>
-                  <ThemedText style={[styles.categoryState, { color: category.unlocked ? mutedText : accent }]}>
-                    {category.unlocked ? '开放' : '锁定'}
+                  <ThemedText style={[styles.categoryState, { color: unlocked ? mutedText : accent }]}>
+                    {unlocked ? '开放' : '锁定'}
                   </ThemedText>
                 </Pressable>
               );
@@ -136,18 +148,22 @@ export default function GameShopScreen() {
               <ThemedText style={[styles.sectionTitle, { color: textColor }]}>{selectedCategory.name}</ThemedText>
               <ThemedText style={[styles.categoryDescription, { color: mutedText }]}>{selectedCategory.description}</ThemedText>
             </View>
-            <View style={[styles.statusBadge, { borderColor: selectedCategory.unlocked ? accent : cardBorder }]}>
-              <ThemedText style={[styles.statusBadgeText, { color: selectedCategory.unlocked ? accent : mutedText }]}>
-                {selectedCategory.unlocked ? '今日可看' : '暂未开放'}
+            <View style={[styles.statusBadge, { borderColor: selectedCategoryUnlocked ? accent : cardBorder }]}>
+              <ThemedText style={[styles.statusBadgeText, { color: selectedCategoryUnlocked ? accent : mutedText }]}>
+                {selectedCategoryUnlocked ? '今日可看' : '暂未开放'}
               </ThemedText>
             </View>
           </View>
 
-          {!selectedCategory.unlocked ? (
+          {!selectedCategoryUnlocked ? (
             <View style={[styles.lockedPanel, { borderColor: cardBorder, backgroundColor: 'rgba(255,255,255,0.34)' }]}>
               <ThemedText style={[styles.lockedMark, { color: accent }]}>封条未拆</ThemedText>
               <ThemedText style={[styles.lockedText, { color: mutedText }]}>{selectedCategory.lockedReason ?? '后续开放。'}</ThemedText>
-              <ThemedText style={[styles.lockedHint, { color: mutedText }]}>Shop-1 只展示日常用品；解锁规则会在 Shop-3 接入。</ThemedText>
+            </View>
+          ) : products.length === 0 ? (
+            <View style={[styles.lockedPanel, { borderColor: cardBorder, backgroundColor: 'rgba(255,255,255,0.34)' }]}>
+              <ThemedText style={[styles.lockedMark, { color: accent }]}>货架整理中</ThemedText>
+              <ThemedText style={[styles.lockedText, { color: mutedText }]}>这里的货架还在整理中。</ThemedText>
             </View>
           ) : (
             <View style={styles.productGrid}>

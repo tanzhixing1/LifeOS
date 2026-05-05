@@ -1,3 +1,5 @@
+import type { Condition } from '@/features/game/engine/types';
+
 export type ProductCategoryId = 'daily' | 'materials' | 'gift' | 'special';
 
 export type CurrencyType = 'gold' | 'gem' | 'ticket';
@@ -6,7 +8,8 @@ export type ShopCategory = {
   id: ProductCategoryId;
   name: string;
   description: string;
-  unlocked: boolean;
+  unlocked?: boolean;
+  unlockRequirements?: Condition[];
   lockedReason?: string;
 };
 
