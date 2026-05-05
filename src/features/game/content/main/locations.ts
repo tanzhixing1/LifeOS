@@ -29,6 +29,7 @@ export const mainLocations: GameLocation[] = [
     icon: '🛒',
     backgroundId: 'market_day',
     entryEventId: 'grocery_first_visit',
+    shopId: 'fogberry_general_store',
     tags: ['shopping'],
   },
   {

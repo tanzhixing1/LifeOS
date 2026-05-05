@@ -48,6 +48,11 @@ export default function GameMapScreen() {
     router.replace(`/(tabs)/game/play?mode=continue&eventId=${encodeURIComponent(nextEventId)}&locationId=${encodeURIComponent(location.id)}`);
   }
 
+  function openShop(location: GameLocation) {
+    if (!location.shopId) return;
+    router.push('/(tabs)/game/shop');
+  }
+
   return (
     <ThemedView style={[styles.screen, { backgroundColor: pageBg }]}>
       <View style={styles.header}>
@@ -78,6 +83,7 @@ export default function GameMapScreen() {
               cardBorder={cardBorder}
               mutedText={mutedText}
               onPress={() => enterLocation(location)}
+              onOpenShop={() => openShop(location)}
             />
           ))}
         </View>
@@ -94,55 +100,74 @@ type LocationCardProps = {
   cardBorder: string;
   mutedText: string;
   onPress: () => void;
+  onOpenShop: () => void;
 };
 
-function LocationCard({ location, isCurrent, player, accent, cardBorder, mutedText, onPress }: LocationCardProps) {
+function LocationCard({ location, isCurrent, player, accent, cardBorder, mutedText, onPress, onOpenShop }: LocationCardProps) {
   const open = isLocationOpen(location, player.gameTime);
   const hoursLabel = formatOpenHours(location.openHours);
   const visibleNpcs = getNpcsAtLocation(location.id, player.gameTime, mainNpcs, mainNpcSchedules, mainLocations);
   const visibleNpcNames = visibleNpcs.map((npc) => npc.name).join('、');
+  const hasShop = Boolean(location.shopId);
 
   return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.nodeBtn,
+    <View
+      style={[
+        styles.nodeCard,
         {
           borderColor: isCurrent ? accent : cardBorder,
           backgroundColor: isCurrent ? 'rgba(209,187,222,0.12)' : 'rgba(255,255,255,0.14)',
-          opacity: pressed ? 0.94 : 1,
         },
       ]}>
-      <View style={styles.nodeTopRow}>
-        <ThemedText style={styles.nodeIcon}>{location.icon ?? '•'}</ThemedText>
-        <View
-          style={[
-            styles.nodeStatus,
-            {
-              borderColor: open ? accent : cardBorder,
-              backgroundColor: open ? 'rgba(209,187,222,0.14)' : 'rgba(122,117,111,0.08)',
-            },
-          ]}>
-          <ThemedText style={[styles.nodeStatusText, { color: open ? accent : mutedText }]}>{open ? '营业中' : '尚未营业'}</ThemedText>
+      <Pressable onPress={onPress} style={({ pressed }) => [styles.nodeBtn, { opacity: pressed ? 0.94 : 1 }]}>
+        <View style={styles.nodeTopRow}>
+          <ThemedText style={styles.nodeIcon}>{location.icon ?? '•'}</ThemedText>
+          <View
+            style={[
+              styles.nodeStatus,
+              {
+                borderColor: open ? accent : cardBorder,
+                backgroundColor: open ? 'rgba(209,187,222,0.14)' : 'rgba(122,117,111,0.08)',
+              },
+            ]}>
+            <ThemedText style={[styles.nodeStatusText, { color: open ? accent : mutedText }]}>{open ? '营业中' : '尚未营业'}</ThemedText>
+          </View>
         </View>
-      </View>
 
-      <ThemedText style={[styles.nodeName, { color: accent }]} numberOfLines={1}>
-        {location.name}
-      </ThemedText>
-      <ThemedText style={[styles.nodeSubtitle, { color: mutedText }]} numberOfLines={1}>
-        {location.subtitle ?? ' '}
-      </ThemedText>
-      {visibleNpcNames ? (
-        <ThemedText style={[styles.nodeNpc, { color: accent }]} numberOfLines={1}>
-          可遇见：{visibleNpcNames}
+        <ThemedText style={[styles.nodeName, { color: accent }]} numberOfLines={1}>
+          {location.name}
         </ThemedText>
+        <ThemedText style={[styles.nodeSubtitle, { color: mutedText }]} numberOfLines={1}>
+          {location.subtitle ?? ' '}
+        </ThemedText>
+        {visibleNpcNames ? (
+          <ThemedText style={[styles.nodeNpc, { color: accent }]} numberOfLines={1}>
+            可遇见：{visibleNpcNames}
+          </ThemedText>
+        ) : null}
+        <ThemedText style={[styles.nodeHours, { color: mutedText }]} numberOfLines={1}>
+          {hoursLabel ?? '全天开放'}
+        </ThemedText>
+        {isCurrent ? <ThemedText style={[styles.nodeCurrent, { color: accent }]}>当前位置</ThemedText> : null}
+      </Pressable>
+
+      {hasShop ? (
+        <View style={styles.shopEntrySection}>
+          <ThemedText style={[styles.shopHint, { color: mutedText }]}>货架上摆着适合见习魔女的小物。</ThemedText>
+          <Pressable
+            onPress={onOpenShop}
+            style={({ pressed }) => [
+              styles.shopEntryButton,
+              {
+                borderColor: accent,
+                backgroundColor: pressed ? 'rgba(209,187,222,0.2)' : 'rgba(209,187,222,0.12)',
+              },
+            ]}>
+            <ThemedText style={[styles.shopEntryText, { color: accent }]}>进入采购</ThemedText>
+          </Pressable>
+        </View>
       ) : null}
-      <ThemedText style={[styles.nodeHours, { color: mutedText }]} numberOfLines={1}>
-        {hoursLabel ?? '全天开放'}
-      </ThemedText>
-      {isCurrent ? <ThemedText style={[styles.nodeCurrent, { color: accent }]}>当前位置</ThemedText> : null}
-    </Pressable>
+    </View>
   );
 }
 
@@ -170,13 +195,18 @@ const styles = StyleSheet.create({
   statusText: { fontSize: 11, lineHeight: 14, fontWeight: '900' },
   card: { borderWidth: 1, borderRadius: 18, padding: 14, gap: 12 },
   cardGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  nodeBtn: {
+  nodeCard: {
     width: '48%',
     minHeight: 138,
     borderWidth: 1.5,
     borderRadius: 16,
     paddingVertical: 12,
     paddingHorizontal: 12,
+    gap: 8,
+  },
+  nodeBtn: {
+    flexGrow: 1,
+    paddingVertical: 12,
     gap: 6,
     justifyContent: 'space-between',
   },
@@ -189,4 +219,15 @@ const styles = StyleSheet.create({
   nodeNpc: { fontSize: 10, lineHeight: 13, fontWeight: '900' },
   nodeHours: { fontSize: 10, lineHeight: 13, fontWeight: '800' },
   nodeCurrent: { fontSize: 10, lineHeight: 13, fontWeight: '900' },
+  shopEntrySection: { gap: 6, paddingTop: 2 },
+  shopHint: { fontSize: 10, lineHeight: 13, fontWeight: '800' },
+  shopEntryButton: {
+    minHeight: 34,
+    borderWidth: 1,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 10,
+  },
+  shopEntryText: { fontSize: 12, lineHeight: 15, fontWeight: '900' },
 });
