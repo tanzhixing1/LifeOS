@@ -114,6 +114,26 @@ export default function GameShopScreen() {
           </View>
         </View>
 
+        <Pressable
+          onPress={() => router.push('/(tabs)/game/gacha')}
+          style={({ pressed }) => [
+            styles.gachaEntryCard,
+            {
+              backgroundColor: pressed ? 'rgba(209,187,222,0.20)' : 'rgba(209,187,222,0.12)',
+              borderColor: accent,
+              opacity: pressed ? 0.9 : 1,
+            },
+          ]}>
+          <View style={styles.gachaEntryIcon}>
+            <ThemedText style={styles.gachaEntryEmoji}>🫐</ThemedText>
+          </View>
+          <View style={styles.gachaEntryCopy}>
+            <ThemedText style={[styles.gachaEntryTitle, { color: textColor }]}>雾莓幸运瓶</ThemedText>
+            <ThemedText style={[styles.gachaEntryText, { color: mutedText }]}>花一点金币，看看今天会被哪件小物选中。</ThemedText>
+          </View>
+          <ThemedText style={[styles.gachaEntryAction, { color: accent }]}>幸运抽取</ThemedText>
+        </Pressable>
+
         <View style={styles.categorySection}>
           <ThemedText style={[styles.sectionTitle, { color: textColor }]}>分类</ThemedText>
           <View style={styles.categoryTabs}>
@@ -279,6 +299,13 @@ const styles = StyleSheet.create({
   currencyPill: { flexGrow: 1, minWidth: 96, borderWidth: 1, borderRadius: 14, paddingHorizontal: 10, paddingVertical: 8, gap: 2 },
   currencyLabel: { fontSize: 12, lineHeight: 15, fontWeight: '900' },
   currencyValue: { fontSize: 11, lineHeight: 14, fontWeight: '800' },
+  gachaEntryCard: { borderWidth: 1.5, borderRadius: 18, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  gachaEntryIcon: { width: 46, height: 46, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.34)' },
+  gachaEntryEmoji: { fontSize: 27, lineHeight: 32 },
+  gachaEntryCopy: { flex: 1, minWidth: 0, gap: 4 },
+  gachaEntryTitle: { fontSize: 15, lineHeight: 19, fontWeight: '900' },
+  gachaEntryText: { fontSize: 12, lineHeight: 16, fontWeight: '800' },
+  gachaEntryAction: { fontSize: 12, lineHeight: 15, fontWeight: '900' },
   categorySection: { gap: 8 },
   categoryTabs: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   categoryTab: { width: '48%', minHeight: 58, borderWidth: 1.5, borderRadius: 16, paddingHorizontal: 11, paddingVertical: 9, gap: 4 },

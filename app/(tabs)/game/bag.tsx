@@ -65,6 +65,7 @@ export default function GameBagScreen() {
   const selectedIcon = selectedItem?.icon ?? '📦';
   const selectedTags = selectedItem?.tags ?? [];
   const selectedTypeLabel = selectedItem?.type ? ITEM_TYPE_LABELS[selectedItem.type] : '未分类';
+  const selectedIsGiftable = selectedItem?.type === 'gift' || selectedItem?.giftable === true;
 
   return (
     <ThemedView style={[styles.screen, { backgroundColor: pageBg }]}>
@@ -169,6 +170,15 @@ export default function GameBagScreen() {
             <ThemedText style={[styles.detailName, { color: textColor }]}>{selectedName}</ThemedText>
             <ThemedText style={[styles.detailDescription, { color: mutedText }]}>{selectedDescription}</ThemedText>
 
+            {selectedIsGiftable ? (
+              <View style={[styles.giftHint, { backgroundColor: 'rgba(209,187,222,0.16)', borderColor: 'rgba(184,132,82,0.22)' }]}>
+                <ThemedText style={[styles.giftHintTitle, { color: accent }]}>可送礼</ThemedText>
+                <ThemedText style={[styles.giftHintText, { color: mutedText }]}>
+                  这件小物以后可以送给熟悉的人。送礼功能将在羁绊系统开放后启用。
+                </ThemedText>
+              </View>
+            ) : null}
+
             <View style={styles.detailMetaRow}>
               <View style={[styles.metaTag, { borderColor: cardBorder }]}>
                 <ThemedText style={[styles.metaText, { color: mutedText }]}>数量 ×{selectedStack?.quantity ?? 0}</ThemedText>
@@ -176,6 +186,11 @@ export default function GameBagScreen() {
               <View style={[styles.metaTag, { borderColor: cardBorder }]}>
                 <ThemedText style={[styles.metaText, { color: mutedText }]}>{selectedTypeLabel}</ThemedText>
               </View>
+              {selectedIsGiftable ? (
+                <View style={[styles.metaTag, { borderColor: accent, backgroundColor: 'rgba(209,187,222,0.14)' }]}>
+                  <ThemedText style={[styles.metaText, { color: accent }]}>可送礼</ThemedText>
+                </View>
+              ) : null}
               {selectedTags.map((tag) => (
                 <View key={`detail.${selectedStack?.itemId}.${tag}`} style={[styles.metaTag, { borderColor: cardBorder }]}>
                   <ThemedText style={[styles.metaText, { color: mutedText }]}>{tag}</ThemedText>
@@ -265,6 +280,9 @@ const styles = StyleSheet.create({
   detailIcon: { fontSize: 34, lineHeight: 40 },
   detailName: { fontSize: 18, lineHeight: 23, fontWeight: '900', textAlign: 'center' },
   detailDescription: { fontSize: 13, lineHeight: 19, fontWeight: '800', textAlign: 'center' },
+  giftHint: { alignSelf: 'stretch', borderWidth: 1, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 10, gap: 4 },
+  giftHintTitle: { fontSize: 12, lineHeight: 15, fontWeight: '900' },
+  giftHintText: { fontSize: 12, lineHeight: 17, fontWeight: '800' },
   detailMetaRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 6 },
   metaTag: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 7, paddingVertical: 3 },
   metaText: { fontSize: 10, lineHeight: 12, fontWeight: '900' },
