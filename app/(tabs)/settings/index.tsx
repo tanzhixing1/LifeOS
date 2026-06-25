@@ -1,6 +1,6 @@
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
@@ -10,7 +10,7 @@ import { ScreenScaffold } from '@/core/ui/ScreenScaffold';
 import { SectionCard } from '@/core/ui/SectionCard';
 import { uiTokens } from '@/core/theme/tokens';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { buildBackupSnapshot, buildBackupSummary, formatBackupJSON } from '@/services/storage/backup';
+import { buildBackupSnapshot, buildBackupSummary, formatBackupJSON, parseBackupJSON, restoreBackupSnapshot, type BackupSummary } from '@/services/storage/backup';
 import { useMessengerStore } from '@/stores/messengerStore';
 
 export default function SettingsHomeScreen() {
@@ -29,6 +29,10 @@ export default function SettingsHomeScreen() {
   const [backupVisible, setBackupVisible] = useState(false);
   const [backupSnapshot, setBackupSnapshot] = useState(() => buildBackupSnapshot());
   const [backupJSON, setBackupJSON] = useState('');
+  const [restoreVisible, setRestoreVisible] = useState(false);
+  const [restoreJSON, setRestoreJSON] = useState('');
+  const [restorePreview, setRestorePreview] = useState<BackupSummary | null>(null);
+  const [restoreError, setRestoreError] = useState('');
 
   const todayISO = useMemo(() => {
     const d = new Date();
@@ -63,6 +67,48 @@ export default function SettingsHomeScreen() {
     setBackupVisible(true);
   }
 
+  function openRestorePanel() {
+    setRestoreVisible(true);
+    setRestoreError('');
+    setRestorePreview(null);
+  }
+
+  function previewRestoreJSON() {
+    const result = parseBackupJSON(restoreJSON.trim());
+    if (!result.ok) {
+      setRestorePreview(null);
+      setRestoreError(result.error);
+      return;
+    }
+
+    setRestoreError('');
+    setRestorePreview(result.summary);
+  }
+
+  function confirmRestore() {
+    const result = parseBackupJSON(restoreJSON.trim());
+    if (!result.ok) {
+      setRestorePreview(null);
+      setRestoreError(result.error);
+      return;
+    }
+
+    Alert.alert('确认恢复备份？', '这会用备份内容覆盖当前本地数据。建议先确认已经保存了当前 JSON 预览。', [
+      { text: '取消', style: 'cancel' },
+      {
+        text: '确认恢复',
+        style: 'destructive',
+        onPress: () => {
+          const summary = restoreBackupSnapshot(result.snapshot);
+          setBackupSnapshot(buildBackupSnapshot());
+          setRestorePreview(summary);
+          setRestoreVisible(false);
+          Alert.alert('恢复完成', '本地数据已按备份内容恢复。');
+        },
+      },
+    ]);
+  }
+
   return (
     <ScreenScaffold scroll contentContainerStyle={styles.content}>
       <View style={styles.header}>
@@ -93,7 +139,7 @@ export default function SettingsHomeScreen() {
           <ThemedText style={styles.cardTitle}>数据备份</ThemedText>
           <AppChip title="预览版" selected style={styles.statusChip} />
         </View>
-        <ThemedText style={[styles.cardSub, { color: palette.muted }]}>先查看本地数据摘要和 JSON，不做导入、不写文件。</ThemedText>
+        <ThemedText style={[styles.cardSub, { color: palette.muted }]}>查看当前数据 JSON，也可以粘贴旧备份预览后确认恢复。</ThemedText>
 
         <View style={[styles.summaryPanel, { backgroundColor: palette.input, borderColor: palette.border }]}>
           <SummaryRow label="Todo" value={`${backupSummary.todosTotal} 条 / 已完成 ${backupSummary.todosDone}`} mutedText={palette.muted} />
@@ -102,7 +148,9 @@ export default function SettingsHomeScreen() {
           <SummaryRow label="Active timeline" value={`${backupSummary.dailyTimelineActiveRecordsTotal} 条`} mutedText={palette.muted} />
           <SummaryRow label="Deleted timeline" value={`${backupSummary.dailyTimelineDeletedRecordsTotal} 条`} mutedText={palette.muted} />
           <SummaryRow label="Habit" value={`${backupSummary.habitsTotal} 个 / 已归档 ${backupSummary.habitsArchived}`} mutedText={palette.muted} />
+          <SummaryRow label="Wish mart" value={`${backupSummary.wishlistTotal} 个 / 已买 ${backupSummary.wishlistBought}`} mutedText={palette.muted} />
           <SummaryRow label="Game" value={attrSummary} mutedText={palette.muted} />
+          <SummaryRow label="Relationships" value={`${backupSummary.relationshipsTotal} 个 / 送礼 ${backupSummary.giftLogsTotal}`} mutedText={palette.muted} />
           <SummaryRow label="Location" value={backupSummary.gameLocation ?? '未记录'} mutedText={palette.muted} />
           <SummaryRow label="Event" value={backupSummary.gameEventId} mutedText={palette.muted} />
           <SummaryRow label="Inspiration" value={`${backupSummary.inspirationsTotal} 条`} mutedText={palette.muted} />
@@ -110,7 +158,10 @@ export default function SettingsHomeScreen() {
           <SummaryRow label="Reward logs" value={backupSummary.rewardLogsTotal === 0 ? '暂未记录' : `${backupSummary.rewardLogsTotal} 条`} mutedText={palette.muted} />
         </View>
 
-        <AppButton title="查看 JSON 预览" onPress={openBackupPreview} />
+        <View style={styles.row}>
+          <AppButton title="查看 JSON 预览" onPress={openBackupPreview} style={styles.rowButton} />
+          <AppButton variant="outline" title="导入 / 恢复" onPress={openRestorePanel} style={styles.rowButton} />
+        </View>
       </SectionCard>
 
       <Modal visible={testVisible} transparent animationType="fade" onRequestClose={() => setTestVisible(false)}>
@@ -175,6 +226,50 @@ export default function SettingsHomeScreen() {
           </SectionCard>
         </View>
       </Modal>
+
+      <Modal visible={restoreVisible} transparent animationType="fade" onRequestClose={() => setRestoreVisible(false)}>
+        <Pressable style={[styles.mask, { backgroundColor: palette.overlay }]} onPress={() => setRestoreVisible(false)}>
+          <Pressable style={styles.maskInner} />
+        </Pressable>
+        <View style={[styles.backupCenter, { paddingBottom: insets.bottom + uiTokens.spacing.xl }]}>
+          <SectionCard elevated style={styles.backupPanel}>
+            <View style={styles.cardHeaderRow}>
+              <ThemedText style={styles.panelTitle}>导入 / 恢复</ThemedText>
+              <AppButton variant="ghost" title="关闭" onPress={() => setRestoreVisible(false)} style={styles.closeBtn} />
+            </View>
+            <ThemedText style={[styles.cardSub, { color: palette.muted }]}>粘贴 LifeOS 备份 JSON，先解析预览，再确认覆盖当前本地数据。</ThemedText>
+            <TextInput
+              multiline
+              value={restoreJSON}
+              onChangeText={(text) => {
+                setRestoreJSON(text);
+                setRestoreError('');
+                setRestorePreview(null);
+              }}
+              placeholder="在这里粘贴备份 JSON"
+              placeholderTextColor={palette.muted}
+              textAlignVertical="top"
+              style={[styles.importInput, { backgroundColor: palette.input, borderColor: palette.border, color: palette.text }]}
+            />
+            {restoreError ? <ThemedText style={styles.errorText}>{restoreError}</ThemedText> : null}
+            {restorePreview ? (
+              <View style={[styles.summaryPanel, { backgroundColor: palette.input, borderColor: palette.border }]}>
+                <SummaryRow label="Todo" value={`${restorePreview.todosTotal} 条 / 已完成 ${restorePreview.todosDone}`} mutedText={palette.muted} />
+                <SummaryRow label="Timeline" value={`${restorePreview.dailyTimelineRecordsTotal} 条`} mutedText={palette.muted} />
+                <SummaryRow label="Habit" value={`${restorePreview.habitsTotal} 个`} mutedText={palette.muted} />
+                <SummaryRow label="Wish mart" value={`${restorePreview.wishlistTotal} 个`} mutedText={palette.muted} />
+                <SummaryRow label="Relationships" value={`${restorePreview.relationshipsTotal} 个 / 送礼 ${restorePreview.giftLogsTotal}`} mutedText={palette.muted} />
+                <SummaryRow label="Fragments" value={`灵感 ${restorePreview.inspirationsTotal} / 心情 ${restorePreview.moodsTotal}`} mutedText={palette.muted} />
+                <SummaryRow label="Inventory" value={`${restorePreview.inventoryItemKinds} 类 / ${restorePreview.inventoryTotalQuantity} 件`} mutedText={palette.muted} />
+              </View>
+            ) : null}
+            <View style={styles.row}>
+              <AppButton variant="outline" title="解析预览" onPress={previewRestoreJSON} style={styles.rowButton} />
+              <AppButton variant="danger" title="确认恢复" onPress={confirmRestore} disabled={!restoreJSON.trim()} style={styles.rowButton} />
+            </View>
+          </SectionCard>
+        </View>
+      </Modal>
     </ScreenScaffold>
   );
 }
@@ -222,4 +317,15 @@ const styles = StyleSheet.create({
   jsonScroll: { borderRadius: uiTokens.radius.md },
   jsonContent: { padding: uiTokens.spacing.md },
   jsonText: { fontSize: 12, lineHeight: 17, fontWeight: '700' },
+  importInput: {
+    minHeight: 180,
+    maxHeight: 260,
+    borderWidth: 1,
+    borderRadius: uiTokens.radius.md,
+    padding: uiTokens.spacing.md,
+    fontSize: 12,
+    lineHeight: 17,
+    fontWeight: '700',
+  },
+  errorText: { color: uiTokens.colors.light.danger, fontSize: 13, lineHeight: 18, fontWeight: '800' },
 });

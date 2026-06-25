@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
 import type { LegacyMoodKind, MoodIntensity, MoodKind } from '@/core/constants/mood';
+import { normalizeFragmentTags } from '@/features/fragments/tags';
 import { zustandStorage } from '@/services/storage/zustandStorage';
 
 export type { LegacyMoodKind, MoodIntensity, MoodKind } from '@/core/constants/mood';
@@ -12,6 +13,7 @@ export type InspirationFragment = {
   id: string;
   type: 'inspiration';
   content: string;
+  tags?: string[];
   createdAt: number;
   updatedAt?: number;
 };
@@ -22,6 +24,7 @@ export type MoodFragment = {
   mood: MoodKind | LegacyMoodKind;
   intensity: MoodIntensity;
   note: string;
+  tags?: string[];
   createdAt: number;
   updatedAt?: number;
 };
@@ -46,10 +49,10 @@ export type FragmentState = {
 };
 
 export type FragmentActions = {
-  addInspiration(input: { content: string }): string;
-  addMood(input: { mood: MoodKind; intensity: MoodIntensity; note?: string }): string;
-  updateInspiration(id: string, input: { content: string }): void;
-  updateMood(id: string, input: { mood: MoodKind; intensity: MoodIntensity; note: string }): void;
+  addInspiration(input: { content: string; tags?: string[] }): string;
+  addMood(input: { mood: MoodKind; intensity: MoodIntensity; note?: string; tags?: string[] }): string;
+  updateInspiration(id: string, input: { content: string; tags?: string[] }): void;
+  updateMood(id: string, input: { mood: MoodKind; intensity: MoodIntensity; note: string; tags?: string[] }): void;
   removeFragment(id: string): void;
   getFragmentsByType<T extends FragmentType>(type: T): Extract<LabFragment, { type: T }>[];
   toggleFavorite(id: string): void;
@@ -92,6 +95,7 @@ export const useFragmentStore = create<FragmentStore>()(
           id,
           type: 'inspiration',
           content,
+          tags: normalizeFragmentTags(input.tags),
           createdAt: now,
         };
         set((s) => ({ fragments: [next, ...s.fragments] }));
@@ -106,6 +110,7 @@ export const useFragmentStore = create<FragmentStore>()(
           mood: input.mood,
           intensity: input.intensity,
           note: input.note?.trim() ?? '',
+          tags: normalizeFragmentTags(input.tags),
           createdAt: now,
         };
         set((s) => ({ fragments: [next, ...s.fragments] }));
@@ -121,6 +126,7 @@ export const useFragmentStore = create<FragmentStore>()(
               ? {
                   ...x,
                   content,
+                  tags: normalizeFragmentTags(input.tags),
                   updatedAt: Date.now(),
                 }
               : x
@@ -136,6 +142,7 @@ export const useFragmentStore = create<FragmentStore>()(
                   mood: input.mood,
                   intensity: input.intensity,
                   note: input.note.trim(),
+                  tags: normalizeFragmentTags(input.tags),
                   updatedAt: Date.now(),
                 }
               : x
@@ -209,7 +216,12 @@ export const useFragmentStore = create<FragmentStore>()(
         const lastDrawnId = state.lastDrawnId && typeof state.lastDrawnId === 'object' ? state.lastDrawnId : {};
 
         return {
-          fragments: Array.isArray(state.fragments) ? state.fragments : [],
+          fragments: Array.isArray(state.fragments)
+            ? state.fragments.map((fragment: any) => ({
+                ...fragment,
+                tags: normalizeFragmentTags(fragment?.tags),
+              }))
+            : [],
           favoriteIds: Array.isArray(state.favoriteIds)
             ? Array.from(new Set(state.favoriteIds.filter((id: unknown): id is string => typeof id === 'string')))
             : [],

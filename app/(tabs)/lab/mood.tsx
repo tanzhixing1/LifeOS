@@ -9,6 +9,7 @@ import { AppChip } from '@/core/ui/AppChip';
 import { ScreenScaffold } from '@/core/ui/ScreenScaffold';
 import { SectionCard } from '@/core/ui/SectionCard';
 import { uiTokens } from '@/core/theme/tokens';
+import { parseFragmentTagInput } from '@/features/fragments/tags';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { type MoodFragment, useFragmentStore } from '@/stores';
 
@@ -30,6 +31,7 @@ export default function MoodScreen() {
   const [mood, setMood] = useState<MoodKind>('平静');
   const [intensity, setIntensity] = useState<MoodIntensity>(3);
   const [note, setNote] = useState('');
+  const [tagInput, setTagInput] = useState('');
 
   const fragments = useFragmentStore((s) => s.fragments);
   const addMood = useFragmentStore((s) => s.addMood);
@@ -44,8 +46,9 @@ export default function MoodScreen() {
   );
 
   function saveMood() {
-    addMood({ mood, intensity, note });
+    addMood({ mood, intensity, note, tags: parseFragmentTagInput(tagInput) });
     setNote('');
+    setTagInput('');
   }
 
   function confirmDelete(item: MoodFragment) {
@@ -134,6 +137,13 @@ export default function MoodScreen() {
                 style={[styles.input, { color: palette.text, backgroundColor: palette.input, borderColor: palette.border }]}
                 textAlignVertical="top"
               />
+              <TextInput
+                value={tagInput}
+                onChangeText={setTagInput}
+                placeholder="标签，可用空格或逗号分隔，例如 疲惫 睡眠"
+                placeholderTextColor={palette.muted}
+                style={[styles.tagInput, { color: palette.text, backgroundColor: palette.input, borderColor: palette.border }]}
+              />
 
               <AppButton onPress={saveMood} title="保存心情" />
             </SectionCard>
@@ -176,6 +186,13 @@ export default function MoodScreen() {
                   ) : (
                     <ThemedText style={[styles.cardNote, { color: palette.muted }]}>没有备注</ThemedText>
                   )}
+                  {item.tags?.length ? (
+                    <View style={styles.tagRow}>
+                      {item.tags.map((tag) => (
+                        <AppChip key={tag} title={tag} style={styles.tagChip} />
+                      ))}
+                    </View>
+                  ) : null}
                   <ThemedText style={[styles.cardTime, { color: palette.muted }]}>{formatCreatedAt(item.createdAt)}</ThemedText>
                 </View>
                 <AppButton variant="ghost" title="删除" onPress={() => confirmDelete(item)} textStyle={{ color: palette.danger }} style={styles.deleteBtn} />
@@ -210,6 +227,9 @@ const styles = StyleSheet.create({
   intensityText: uiTokens.typography.chip,
   intensityDot: { width: 5, height: 5, borderRadius: 999 },
   input: { minHeight: 92, borderWidth: 1, borderRadius: uiTokens.radius.md, padding: uiTokens.spacing.md, fontSize: 15, lineHeight: 21, fontWeight: '700' },
+  tagInput: { minHeight: 44, borderWidth: 1, borderRadius: uiTokens.radius.md, paddingHorizontal: uiTokens.spacing.md, fontSize: 14, lineHeight: 19, fontWeight: '800' },
+  tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: uiTokens.spacing.xs },
+  tagChip: { paddingVertical: 5, paddingHorizontal: uiTokens.spacing.sm },
   countText: { fontSize: 13, lineHeight: 18, fontWeight: '900' },
   emptyCard: { alignItems: 'center', gap: uiTokens.spacing.sm },
   emptyMark: { fontSize: 24, lineHeight: 28, fontWeight: '900' },

@@ -9,6 +9,7 @@ import { AppChip } from '@/core/ui/AppChip';
 import { ScreenScaffold } from '@/core/ui/ScreenScaffold';
 import { SectionCard } from '@/core/ui/SectionCard';
 import { uiTokens } from '@/core/theme/tokens';
+import { formatFragmentTagsInput, parseFragmentTagInput } from '@/features/fragments/tags';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { type LabFragment, useFragmentStore } from '@/stores';
 
@@ -48,10 +49,12 @@ export default function FragmentDetailScreen() {
   const [mood, setMood] = useState<MoodKind>('平静');
   const [intensity, setIntensity] = useState<MoodIntensity>(3);
   const [note, setNote] = useState('');
+  const [tagInput, setTagInput] = useState('');
 
   useEffect(() => {
     if (!fragment) return;
     setEditing(false);
+    setTagInput(formatFragmentTagsInput(fragment.tags));
     if (fragment.type === 'inspiration') {
       setContent(fragment.content);
       return;
@@ -73,11 +76,11 @@ export default function FragmentDetailScreen() {
     if (fragment.type === 'inspiration') {
       const nextContent = content.trim();
       if (!nextContent) return;
-      updateInspiration(fragment.id, { content: nextContent });
+      updateInspiration(fragment.id, { content: nextContent, tags: parseFragmentTagInput(tagInput) });
       setEditing(false);
       return;
     }
-    updateMood(fragment.id, { mood, intensity, note });
+    updateMood(fragment.id, { mood, intensity, note, tags: parseFragmentTagInput(tagInput) });
     setEditing(false);
   }
 
@@ -152,7 +155,16 @@ export default function FragmentDetailScreen() {
               style={[styles.input, styles.largeInput, { color: palette.text, backgroundColor: palette.input, borderColor: palette.border }]}
             />
           ) : (
-            <ThemedText style={styles.fullText}>{fragment.content}</ThemedText>
+            <>
+              <ThemedText style={styles.fullText}>{fragment.content}</ThemedText>
+              {fragment.tags?.length ? (
+                <View style={styles.tagRow}>
+                  {fragment.tags.map((tag) => (
+                    <AppChip key={tag} title={tag} style={styles.tagChip} />
+                  ))}
+                </View>
+              ) : null}
+            </>
           )
         ) : (
           <View style={styles.moodContent}>
@@ -205,10 +217,26 @@ export default function FragmentDetailScreen() {
                   ))}
                 </View>
                 <ThemedText style={styles.fullText}>{fragment.note.trim().length > 0 ? fragment.note : '没有备注'}</ThemedText>
+                {fragment.tags?.length ? (
+                  <View style={styles.tagRow}>
+                    {fragment.tags.map((tag) => (
+                      <AppChip key={tag} title={tag} style={styles.tagChip} />
+                    ))}
+                  </View>
+                ) : null}
               </>
             )}
           </View>
         )}
+        {editing ? (
+          <TextInput
+            value={tagInput}
+            onChangeText={setTagInput}
+            placeholder="标签，可用空格或逗号分隔"
+            placeholderTextColor={palette.muted}
+            style={[styles.tagInput, { color: palette.text, backgroundColor: palette.input, borderColor: palette.border }]}
+          />
+        ) : null}
       </SectionCard>
 
       <SectionCard style={styles.metaCard}>
@@ -264,5 +292,8 @@ const styles = StyleSheet.create({
   miniMeterDot: { width: 22, height: 6, borderRadius: 999 },
   input: { minHeight: 92, borderWidth: 1, borderRadius: uiTokens.radius.md, padding: uiTokens.spacing.md, fontSize: 15, lineHeight: 21, fontWeight: '700' },
   largeInput: { minHeight: 190 },
+  tagInput: { minHeight: 44, borderWidth: 1, borderRadius: uiTokens.radius.md, paddingHorizontal: uiTokens.spacing.md, fontSize: 14, lineHeight: 19, fontWeight: '800' },
+  tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: uiTokens.spacing.xs },
+  tagChip: { paddingVertical: 5, paddingHorizontal: uiTokens.spacing.sm },
   actions: { gap: uiTokens.spacing.sm },
 });

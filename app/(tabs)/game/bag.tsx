@@ -1,12 +1,16 @@
 import { router } from 'expo-router';
 import React, { useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { mainNpcs } from '@/features/game/content/main';
 import { gameItems, type ItemType } from '@/features/game/content/main/items/items';
+import { canUseGameItem, consumeGameItem } from '@/features/game/items/useItem';
+import { canGiveGift, giveGiftToNpc } from '@/features/game/relationships/gifts';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { useInventoryStore } from '@/stores/inventoryStore';
+import { useRelationshipStore } from '@/stores/relationshipStore';
 
 const ITEM_TYPE_LABELS: Record<ItemType, string> = {
   consumable: '消耗品',
@@ -40,6 +44,7 @@ export default function GameBagScreen() {
   const accent = useThemeColor({ light: '#B88452', dark: '#D8B174' }, 'tint');
 
   const items = useInventoryStore((s) => s.items);
+  const relationships = useRelationshipStore((s) => s.relationships);
   const [selectedFilterId, setSelectedFilterId] = useState<BagFilterId>('all');
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const stacks = useMemo(
@@ -66,6 +71,20 @@ export default function GameBagScreen() {
   const selectedTags = selectedItem?.tags ?? [];
   const selectedTypeLabel = selectedItem?.type ? ITEM_TYPE_LABELS[selectedItem.type] : '未分类';
   const selectedIsGiftable = selectedItem?.type === 'gift' || selectedItem?.giftable === true;
+  const selectedCanUse = selectedStack ? canUseGameItem(selectedStack.itemId) : false;
+  const selectedCanGift = selectedStack ? canGiveGift(selectedStack.itemId) : false;
+
+  function handleUseSelectedItem() {
+    if (!selectedStack) return;
+    const result = consumeGameItem(selectedStack.itemId);
+    Alert.alert(result.title, result.message);
+  }
+
+  function handleGiveGift(npcId: string) {
+    if (!selectedStack) return;
+    const result = giveGiftToNpc(npcId, selectedStack.itemId);
+    Alert.alert(result.title, result.message);
+  }
 
   return (
     <ThemedView style={[styles.screen, { backgroundColor: pageBg }]}>
@@ -169,12 +188,17 @@ export default function GameBagScreen() {
             </View>
             <ThemedText style={[styles.detailName, { color: textColor }]}>{selectedName}</ThemedText>
             <ThemedText style={[styles.detailDescription, { color: mutedText }]}>{selectedDescription}</ThemedText>
+            {selectedCanUse ? (
+              <View style={[styles.useHint, { backgroundColor: 'rgba(184,132,82,0.12)', borderColor: 'rgba(184,132,82,0.26)' }]}>
+                <ThemedText style={[styles.useHintText, { color: mutedText }]}>可以现在使用，效果会立即作用到当前周目状态。</ThemedText>
+              </View>
+            ) : null}
 
             {selectedIsGiftable ? (
               <View style={[styles.giftHint, { backgroundColor: 'rgba(209,187,222,0.16)', borderColor: 'rgba(184,132,82,0.22)' }]}>
                 <ThemedText style={[styles.giftHintTitle, { color: accent }]}>可送礼</ThemedText>
                 <ThemedText style={[styles.giftHintText, { color: mutedText }]}>
-                  这件小物以后可以送给熟悉的人。送礼功能将在羁绊系统开放后启用。
+                  这件小物可以送给熟悉的人。对方收下后会提升一点羁绊。
                 </ThemedText>
               </View>
             ) : null}
@@ -197,6 +221,43 @@ export default function GameBagScreen() {
                 </View>
               ))}
             </View>
+
+            {selectedCanGift ? (
+              <View style={styles.giftActionList}>
+                {mainNpcs.map((npc) => {
+                  const relationship = relationships[npc.id];
+                  return (
+                    <Pressable
+                      key={npc.id}
+                      onPress={() => handleGiveGift(npc.id)}
+                      style={({ pressed }) => [
+                        styles.giftButton,
+                        {
+                          borderColor: accent,
+                          backgroundColor: pressed ? 'rgba(209,187,222,0.28)' : 'rgba(209,187,222,0.16)',
+                        },
+                      ]}>
+                      <ThemedText style={[styles.giftButtonText, { color: accent }]}>送给{npc.name}</ThemedText>
+                      <ThemedText style={[styles.giftBondText, { color: mutedText }]}>羁绊 {relationship?.bond ?? 0}</ThemedText>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            ) : null}
+
+            {selectedCanUse ? (
+              <Pressable
+                onPress={handleUseSelectedItem}
+                style={({ pressed }) => [
+                  styles.useButton,
+                  {
+                    borderColor: accent,
+                    backgroundColor: pressed ? 'rgba(184,132,82,0.28)' : 'rgba(184,132,82,0.16)',
+                  },
+                ]}>
+                <ThemedText style={[styles.useButtonText, { color: accent }]}>使用</ThemedText>
+              </Pressable>
+            ) : null}
 
             <Pressable
               onPress={() => setSelectedItemId(null)}
@@ -283,9 +344,17 @@ const styles = StyleSheet.create({
   giftHint: { alignSelf: 'stretch', borderWidth: 1, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 10, gap: 4 },
   giftHintTitle: { fontSize: 12, lineHeight: 15, fontWeight: '900' },
   giftHintText: { fontSize: 12, lineHeight: 17, fontWeight: '800' },
+  giftActionList: { alignSelf: 'stretch', gap: 8 },
+  giftButton: { minHeight: 44, borderWidth: 1.5, borderRadius: 12, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
+  giftButtonText: { fontSize: 13, lineHeight: 16, fontWeight: '900' },
+  giftBondText: { fontSize: 11, lineHeight: 14, fontWeight: '900' },
+  useHint: { alignSelf: 'stretch', borderWidth: 1, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 9 },
+  useHintText: { fontSize: 12, lineHeight: 17, fontWeight: '800', textAlign: 'center' },
   detailMetaRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 6 },
   metaTag: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 7, paddingVertical: 3 },
   metaText: { fontSize: 10, lineHeight: 12, fontWeight: '900' },
   closeButton: { minHeight: 38, alignSelf: 'stretch', borderWidth: 1.5, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginTop: 2 },
   closeButtonText: { fontSize: 12, lineHeight: 15, fontWeight: '900' },
+  useButton: { minHeight: 42, alignSelf: 'stretch', borderWidth: 1.5, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginTop: 2 },
+  useButtonText: { fontSize: 13, lineHeight: 16, fontWeight: '900' },
 });

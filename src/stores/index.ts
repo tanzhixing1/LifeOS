@@ -15,6 +15,7 @@ export {
 } from './dailyTimelineStore';
 export { useGameStore } from './gameStore';
 export { useAIStore } from './aiStore';
+export { useRelationshipStore, type GiftLog, type NpcRelationship } from './relationshipStore';
 export {
   useFragmentStore,
   type FragmentType,

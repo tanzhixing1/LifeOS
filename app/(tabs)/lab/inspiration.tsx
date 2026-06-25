@@ -8,6 +8,7 @@ import { AppChip } from '@/core/ui/AppChip';
 import { ScreenScaffold } from '@/core/ui/ScreenScaffold';
 import { SectionCard } from '@/core/ui/SectionCard';
 import { uiTokens } from '@/core/theme/tokens';
+import { parseFragmentTagInput } from '@/features/fragments/tags';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { type InspirationFragment, useFragmentStore } from '@/stores';
 
@@ -25,6 +26,7 @@ export default function InspirationScreen() {
   const palette = uiTokens.colors[theme];
 
   const [content, setContent] = useState('');
+  const [tagInput, setTagInput] = useState('');
   const fragments = useFragmentStore((s) => s.fragments);
   const addInspiration = useFragmentStore((s) => s.addInspiration);
   const removeFragment = useFragmentStore((s) => s.removeFragment);
@@ -42,8 +44,9 @@ export default function InspirationScreen() {
   function saveInspiration() {
     const nextContent = content.trim();
     if (!nextContent) return;
-    addInspiration({ content: nextContent });
+    addInspiration({ content: nextContent, tags: parseFragmentTagInput(tagInput) });
     setContent('');
+    setTagInput('');
   }
 
   function confirmDelete(item: InspirationFragment) {
@@ -93,6 +96,13 @@ export default function InspirationScreen() {
                 style={[styles.input, { color: palette.text, backgroundColor: palette.input, borderColor: palette.border }]}
                 textAlignVertical="top"
               />
+              <TextInput
+                value={tagInput}
+                onChangeText={setTagInput}
+                placeholder="标签，可用空格或逗号分隔，例如 疲惫 项目"
+                placeholderTextColor={palette.muted}
+                style={[styles.tagInput, { color: palette.text, backgroundColor: palette.input, borderColor: palette.border }]}
+              />
               <AppButton disabled={!canSave} onPress={saveInspiration} title="保存灵感" />
             </SectionCard>
 
@@ -119,6 +129,13 @@ export default function InspirationScreen() {
               <View style={[styles.paperStripe, { backgroundColor: palette.accentSoft }]} />
               <View style={styles.cardBody}>
                 <ThemedText style={styles.cardContent}>{item.content}</ThemedText>
+                {item.tags?.length ? (
+                  <View style={styles.tagRow}>
+                    {item.tags.map((tag) => (
+                      <AppChip key={tag} title={tag} style={styles.tagChip} />
+                    ))}
+                  </View>
+                ) : null}
                 <View style={styles.cardFooter}>
                   <ThemedText style={[styles.cardTime, { color: palette.muted }]}>{formatCreatedAt(item.createdAt)}</ThemedText>
                   <ThemedText style={[styles.spark, { color: palette.accentStrong }]}>✦</ThemedText>
@@ -150,6 +167,9 @@ const styles = StyleSheet.create({
   sectionSub: { fontSize: 12, lineHeight: 17, fontWeight: '800' },
   countText: { fontSize: 13, lineHeight: 18, fontWeight: '900' },
   input: { minHeight: 124, borderWidth: 1, borderRadius: uiTokens.radius.md, padding: uiTokens.spacing.md, fontSize: 16, lineHeight: 23, fontWeight: '700' },
+  tagInput: { minHeight: 44, borderWidth: 1, borderRadius: uiTokens.radius.md, paddingHorizontal: uiTokens.spacing.md, fontSize: 14, lineHeight: 19, fontWeight: '800' },
+  tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: uiTokens.spacing.xs },
+  tagChip: { paddingVertical: 5, paddingHorizontal: uiTokens.spacing.sm },
   emptyCard: { alignItems: 'center', gap: uiTokens.spacing.sm },
   emptyMark: { fontSize: 24, lineHeight: 28, fontWeight: '900' },
   emptyText: { fontSize: 13, lineHeight: 19, fontWeight: '800', textAlign: 'center' },
