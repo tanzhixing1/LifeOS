@@ -182,7 +182,10 @@ export default function GameBagScreen() {
 
       <Modal visible={Boolean(selectedStack)} transparent animationType="fade" onRequestClose={() => setSelectedItemId(null)}>
         <View style={styles.modalBackdrop}>
-          <View style={[styles.detailCard, { backgroundColor: cardBg, borderColor: cardBorder }]}>
+          <ScrollView
+            style={styles.detailScroll}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={[styles.detailCard, { backgroundColor: cardBg, borderColor: cardBorder }]}>
             <View style={[styles.detailIconBubble, { backgroundColor: cardAlt, borderColor: cardBorder }]}>
               <ThemedText style={styles.detailIcon}>{selectedIcon}</ThemedText>
             </View>
@@ -196,9 +199,9 @@ export default function GameBagScreen() {
 
             {selectedIsGiftable ? (
               <View style={[styles.giftHint, { backgroundColor: 'rgba(209,187,222,0.16)', borderColor: 'rgba(184,132,82,0.22)' }]}>
-                <ThemedText style={[styles.giftHintTitle, { color: accent }]}>可送礼</ThemedText>
+                <ThemedText style={[styles.giftHintTitle, { color: accent }]}>送礼已开启</ThemedText>
                 <ThemedText style={[styles.giftHintText, { color: mutedText }]}>
-                  这件小物可以送给熟悉的人。对方收下后会提升一点羁绊。
+                  这件小物可以送给莉莉丝。她收下后会提升一点羁绊。
                 </ThemedText>
               </View>
             ) : null}
@@ -212,7 +215,7 @@ export default function GameBagScreen() {
               </View>
               {selectedIsGiftable ? (
                 <View style={[styles.metaTag, { borderColor: accent, backgroundColor: 'rgba(209,187,222,0.14)' }]}>
-                  <ThemedText style={[styles.metaText, { color: accent }]}>可送礼</ThemedText>
+                  <ThemedText style={[styles.metaText, { color: accent }]}>送礼已开启</ThemedText>
                 </View>
               ) : null}
               {selectedTags.map((tag) => (
@@ -270,7 +273,7 @@ export default function GameBagScreen() {
               ]}>
               <ThemedText style={[styles.closeButtonText, { color: accent }]}>关闭</ThemedText>
             </Pressable>
-          </View>
+          </ScrollView>
         </View>
       </Modal>
     </ThemedView>
@@ -336,7 +339,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 22,
   },
-  detailCard: { width: '100%', maxWidth: 360, borderWidth: 1, borderRadius: 20, padding: 18, alignItems: 'center', gap: 10 },
+  detailScroll: { width: '100%', maxWidth: 360, maxHeight: '86%' },
+  detailCard: { borderWidth: 1, borderRadius: 20, padding: 18, alignItems: 'center', gap: 10 },
   detailIconBubble: { width: 64, height: 64, borderRadius: 18, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   detailIcon: { fontSize: 34, lineHeight: 40 },
   detailName: { fontSize: 18, lineHeight: 23, fontWeight: '900', textAlign: 'center' },
