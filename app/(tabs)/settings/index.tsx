@@ -1,6 +1,6 @@
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useMemo, useState } from 'react';
-import { Alert, Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { Alert, Modal, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
@@ -85,6 +85,20 @@ export default function SettingsHomeScreen() {
     setRestorePreview(result.summary);
   }
 
+  function applyRestore(snapshot: Parameters<typeof restoreBackupSnapshot>[0]) {
+    const summary = restoreBackupSnapshot(snapshot);
+    setBackupSnapshot(buildBackupSnapshot());
+    setRestorePreview(summary);
+    setRestoreVisible(false);
+
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      window.alert('LifeOS 备份已恢复完成。');
+      return;
+    }
+
+    Alert.alert('恢复完成', '本地数据已按备份内容恢复。');
+  }
+
   function confirmRestore() {
     const result = parseBackupJSON(restoreJSON.trim());
     if (!result.ok) {
@@ -93,18 +107,20 @@ export default function SettingsHomeScreen() {
       return;
     }
 
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      const confirmed = window.confirm('这会用备份内容覆盖当前本地数据。确定要继续恢复吗？');
+      if (confirmed) {
+        applyRestore(result.snapshot);
+      }
+      return;
+    }
+
     Alert.alert('确认恢复备份？', '这会用备份内容覆盖当前本地数据。建议先确认已经保存了当前 JSON 预览。', [
       { text: '取消', style: 'cancel' },
       {
         text: '确认恢复',
         style: 'destructive',
-        onPress: () => {
-          const summary = restoreBackupSnapshot(result.snapshot);
-          setBackupSnapshot(buildBackupSnapshot());
-          setRestorePreview(summary);
-          setRestoreVisible(false);
-          Alert.alert('恢复完成', '本地数据已按备份内容恢复。');
-        },
+        onPress: () => applyRestore(result.snapshot),
       },
     ]);
   }
