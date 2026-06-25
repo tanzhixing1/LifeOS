@@ -98,6 +98,11 @@ export default function GameBagScreen() {
       return;
     }
 
+    if (from === 'work') {
+      router.replace({ pathname: '/(tabs)/game/work', params: { from: 'map' } });
+      return;
+    }
+
     if (from === 'play') {
       const nextEventId = returnEventId || eventId;
       const nextLocationId = returnLocationId || playerLocation || 'home';

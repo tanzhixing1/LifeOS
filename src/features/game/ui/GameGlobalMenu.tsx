@@ -97,6 +97,11 @@ export function GameGlobalMenu() {
       return;
     }
 
+    if (pathname.endsWith('/work')) {
+      router.push({ pathname: '/(tabs)/game/bag', params: { from: 'work' } });
+      return;
+    }
+
     if (pathname.endsWith('/play')) {
       const eventId = Array.isArray(routeParams.eventId) ? routeParams.eventId[0] : routeParams.eventId;
       const locationId = Array.isArray(routeParams.locationId) ? routeParams.locationId[0] : routeParams.locationId;

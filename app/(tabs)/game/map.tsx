@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import React, { useEffect, useMemo } from 'react';
-import { Alert, Pressable, StyleSheet, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -55,41 +55,66 @@ export default function GameMapScreen() {
     router.push({ pathname: '/(tabs)/game/shop', params: { from: 'map' } });
   }
 
+  function openWorkBoard() {
+    router.push({ pathname: '/(tabs)/game/work', params: { from: 'map' } });
+  }
+
   return (
     <ThemedView style={[styles.screen, { backgroundColor: pageBg }]}>
-      <View style={styles.header}>
-        <View style={styles.headerRow}>
-          <Pressable onPress={() => router.replace('/(tabs)/game')} style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1 }]}>
-            <ThemedText style={[styles.backText, { color: mutedText }]}>返回</ThemedText>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+        <View style={styles.header}>
+          <View style={styles.headerRow}>
+            <Pressable onPress={() => router.replace('/(tabs)/game')} style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1 }]}>
+              <ThemedText style={[styles.backText, { color: mutedText }]}>返回</ThemedText>
+            </Pressable>
+            <ThemedText style={styles.bigTitle}>雾莓镇</ThemedText>
+            <View style={{ width: 40 }} />
+          </View>
+
+          <View style={[styles.statusBar, { backgroundColor: cardBg, borderColor: cardBorder }]}>
+            <ThemedText style={[styles.statusText, { color: mutedText }]}>{formatGameTime(player.gameTime)}</ThemedText>
+            <ThemedText style={[styles.statusText, { color: mutedText }]}>疲劳 {player.vitals.fatigue}</ThemedText>
+            <ThemedText style={[styles.statusText, { color: mutedText }]}>金币 {gold}G</ThemedText>
+          </View>
+        </View>
+
+        <View style={[styles.card, { backgroundColor: cardBg, borderColor: cardBorder }]}>
+          <Pressable
+            onPress={openWorkBoard}
+            style={({ pressed }) => [
+              styles.workEntry,
+              {
+                borderColor: accent,
+                backgroundColor: pressed ? 'rgba(209,187,222,0.22)' : 'rgba(209,187,222,0.12)',
+              },
+            ]}>
+            <View style={styles.workEntryIcon}>
+              <ThemedText style={styles.workEntryEmoji}>🧾</ThemedText>
+            </View>
+            <View style={styles.workEntryCopy}>
+              <ThemedText style={[styles.workEntryTitle, { color: accent }]}>零工委托</ThemedText>
+              <ThemedText style={[styles.workEntryText, { color: mutedText }]}>花一点游戏时间，赚些采购用的金币。</ThemedText>
+            </View>
+            <ThemedText style={[styles.workEntryAction, { color: accent }]}>去看看</ThemedText>
           </Pressable>
-          <ThemedText style={styles.bigTitle}>雾莓镇</ThemedText>
-          <View style={{ width: 40 }} />
-        </View>
 
-        <View style={[styles.statusBar, { backgroundColor: cardBg, borderColor: cardBorder }]}>
-          <ThemedText style={[styles.statusText, { color: mutedText }]}>{formatGameTime(player.gameTime)}</ThemedText>
-          <ThemedText style={[styles.statusText, { color: mutedText }]}>疲劳 {player.vitals.fatigue}</ThemedText>
-          <ThemedText style={[styles.statusText, { color: mutedText }]}>金币 {gold}G</ThemedText>
+          <View style={styles.cardGrid}>
+            {locations.map((location) => (
+              <LocationCard
+                key={location.id}
+                location={location}
+                isCurrent={player.location === location.id}
+                player={player}
+                accent={accent}
+                cardBorder={cardBorder}
+                mutedText={mutedText}
+                onPress={() => enterLocation(location)}
+                onOpenShop={() => openShop(location)}
+              />
+            ))}
+          </View>
         </View>
-      </View>
-
-      <View style={[styles.card, { backgroundColor: cardBg, borderColor: cardBorder }]}>
-        <View style={styles.cardGrid}>
-          {locations.map((location) => (
-            <LocationCard
-              key={location.id}
-              location={location}
-              isCurrent={player.location === location.id}
-              player={player}
-              accent={accent}
-              cardBorder={cardBorder}
-              mutedText={mutedText}
-              onPress={() => enterLocation(location)}
-              onOpenShop={() => openShop(location)}
-            />
-          ))}
-        </View>
-      </View>
+      </ScrollView>
     </ThemedView>
   );
 }
@@ -179,7 +204,8 @@ function isLocationUnlocked(location: GameLocation, player: PlayerState): boolea
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, paddingHorizontal: 18, paddingTop: 18 },
+  screen: { flex: 1 },
+  content: { paddingHorizontal: 18, paddingTop: 18, paddingBottom: 34 },
   header: { paddingTop: 4, paddingBottom: 12, gap: 8 },
   headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   bigTitle: { fontSize: 28, fontWeight: '900', letterSpacing: 0.2, textAlign: 'center' },
@@ -196,6 +222,13 @@ const styles = StyleSheet.create({
   },
   statusText: { fontSize: 11, lineHeight: 14, fontWeight: '900' },
   card: { borderWidth: 1, borderRadius: 18, padding: 14, gap: 12 },
+  workEntry: { borderWidth: 1.5, borderRadius: 16, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  workEntryIcon: { width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.26)' },
+  workEntryEmoji: { fontSize: 24, lineHeight: 28 },
+  workEntryCopy: { flex: 1, minWidth: 0, gap: 3 },
+  workEntryTitle: { fontSize: 15, lineHeight: 19, fontWeight: '900' },
+  workEntryText: { fontSize: 11, lineHeight: 15, fontWeight: '800' },
+  workEntryAction: { fontSize: 12, lineHeight: 15, fontWeight: '900' },
   cardGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   nodeCard: {
     width: '48%',
