@@ -7,6 +7,7 @@ export default function LabLayout() {
       <Stack.Screen name="index" />
       <Stack.Screen name="inspiration" />
       <Stack.Screen name="mood" />
+      <Stack.Screen name="fragments/index" />
       <Stack.Screen name="fragments/[id]" />
     </Stack>
   );

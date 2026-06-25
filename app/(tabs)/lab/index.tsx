@@ -40,7 +40,7 @@ export default function LabHomeScreen() {
     <ScreenScaffold scroll contentContainerStyle={styles.content}>
       <View style={styles.header}>
         <View style={[styles.orbit, { borderColor: palette.accentSoft }]}>
-          <ThemedText style={[styles.orbitMoon, { color: palette.accentStrong }]}>☾</ThemedText>
+          <ThemedText style={[styles.orbitMoon, { color: palette.accentStrong }]}>☽</ThemedText>
           <ThemedText style={[styles.orbitStar, { color: palette.accentStrong }]}>✦</ThemedText>
         </View>
         <ThemedText style={[styles.kicker, { color: palette.accentStrong }]}>LAB NOTEBOOK</ThemedText>
@@ -48,6 +48,11 @@ export default function LabHomeScreen() {
         <ThemedText style={[styles.subtitle, { color: palette.muted }]}>
           一间安静的小房间，用来收集情绪天气、灵感火花和一些还没成形的想法。
         </ThemedText>
+        <Pressable onPress={() => router.push('/(tabs)/lab/fragments' as any)} style={({ pressed }) => [{ opacity: pressed ? 0.88 : 1 }]}>
+          <View style={[styles.drawerPill, { borderColor: palette.accent, backgroundColor: palette.cardAlt }]}>
+            <ThemedText style={[styles.drawerPillText, { color: palette.accentStrong }]}>🎲 碎片抽取</ThemedText>
+          </View>
+        </Pressable>
       </View>
 
       <View style={styles.grid}>
@@ -56,7 +61,7 @@ export default function LabHomeScreen() {
             <View style={styles.paperGlow} />
             <View style={styles.entryTop}>
               <View>
-                <ThemedText style={[styles.entryIcon, { color: palette.accentStrong }]}>☾</ThemedText>
+                <ThemedText style={[styles.entryIcon, { color: palette.accentStrong }]}>☽</ThemedText>
                 <ThemedText style={[styles.entryKicker, { color: palette.muted }]}>MOOD OBSERVATORY</ThemedText>
               </View>
               <AppChip title={`${stats.moods} 条`} selected style={styles.entryChip} />
@@ -98,6 +103,16 @@ const styles = StyleSheet.create({
   kicker: { ...uiTokens.typography.meta, textAlign: 'center', letterSpacing: 1.2 },
   bigTitle: uiTokens.typography.screenTitle,
   subtitle: { fontSize: 13, lineHeight: 20, fontWeight: '700', textAlign: 'center' },
+  drawerPill: {
+    minHeight: 36,
+    borderWidth: 1,
+    borderRadius: uiTokens.radius.pill,
+    paddingHorizontal: uiTokens.spacing.lg,
+    paddingVertical: uiTokens.spacing.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  drawerPillText: { fontSize: 12, lineHeight: 15, fontWeight: '900' },
   grid: { gap: uiTokens.spacing.md },
   entryCard: { padding: 18, gap: uiTokens.spacing.sm, overflow: 'hidden' },
   paperGlow: { position: 'absolute', right: -26, top: -22, width: 92, height: 92, borderRadius: 999, backgroundColor: 'rgba(209,187,222,0.16)' },

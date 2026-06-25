@@ -8,7 +8,7 @@ import type { Habit, HabitLog } from '@/stores/habitStore';
 import { useHabitStore } from '@/stores/habitStore';
 import type { InventoryItemStack } from '@/stores/inventoryStore';
 import { useInventoryStore } from '@/stores/inventoryStore';
-import type { LabFragment } from '@/stores/fragmentStore';
+import type { FragmentBucketState, FragmentLastDrawnState, LabFragment } from '@/stores/fragmentStore';
 import { useFragmentStore } from '@/stores/fragmentStore';
 import type { MessengerMessage, MessengerState } from '@/stores/messengerStore';
 import { useMessengerStore } from '@/stores/messengerStore';
@@ -46,6 +46,9 @@ export type BackupSnapshot = {
     };
     fragments: {
       fragments: LabFragment[];
+      favoriteIds: string[];
+      recentDrawIds: FragmentBucketState;
+      lastDrawnId: FragmentLastDrawnState;
     };
     messenger: {
       queue: MessengerMessage[];
@@ -79,6 +82,8 @@ export type BackupSummary = {
   inventoryTotalQuantity: number;
   inspirationsTotal: number;
   moodsTotal: number;
+  fragmentFavorites: number;
+  fragmentRecentDraws: number;
   rewardLogsTotal: number;
 };
 
@@ -122,6 +127,9 @@ export function buildBackupSnapshot(): BackupSnapshot {
       },
       fragments: {
         fragments: fragmentState.fragments,
+        favoriteIds: fragmentState.favoriteIds,
+        recentDrawIds: fragmentState.recentDrawIds,
+        lastDrawnId: fragmentState.lastDrawnId,
       },
       messenger: {
         queue: messengerState.queue,
@@ -145,6 +153,8 @@ export function buildBackupSummary(snapshot: BackupSnapshot = buildBackupSnapsho
   const dailyTimelineRecords = snapshot.data.dailyTimeline.records;
   const habits = Object.values(snapshot.data.habits.habits);
   const fragments = snapshot.data.fragments.fragments;
+  const fragmentFavoriteIds = Array.isArray(snapshot.data.fragments.favoriteIds) ? snapshot.data.fragments.favoriteIds : [];
+  const fragmentRecentDrawIds = snapshot.data.fragments.recentDrawIds ?? { inspiration: [], mood: [] };
   const attrs = snapshot.data.game.player.attrs;
   const inventoryItems = Object.values(snapshot.data.inventory.items);
 
@@ -173,6 +183,8 @@ export function buildBackupSummary(snapshot: BackupSnapshot = buildBackupSnapsho
     inventoryTotalQuantity: inventoryItems.reduce((total, item) => total + item.quantity, 0),
     inspirationsTotal: fragments.filter((fragment) => fragment.type === 'inspiration').length,
     moodsTotal: fragments.filter((fragment) => fragment.type === 'mood').length,
+    fragmentFavorites: fragmentFavoriteIds.length,
+    fragmentRecentDraws: (fragmentRecentDrawIds.inspiration?.length ?? 0) + (fragmentRecentDrawIds.mood?.length ?? 0),
     rewardLogsTotal: snapshot.data.rewards.logs.length,
   };
 }

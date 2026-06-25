@@ -28,8 +28,21 @@ export type MoodFragment = {
 
 export type LabFragment = InspirationFragment | MoodFragment;
 
+export type FragmentBucketState = {
+  inspiration: string[];
+  mood: string[];
+};
+
+export type FragmentLastDrawnState = {
+  inspiration: string | null;
+  mood: string | null;
+};
+
 export type FragmentState = {
   fragments: LabFragment[];
+  favoriteIds: string[];
+  recentDrawIds: FragmentBucketState;
+  lastDrawnId: FragmentLastDrawnState;
 };
 
 export type FragmentActions = {
@@ -39,6 +52,9 @@ export type FragmentActions = {
   updateMood(id: string, input: { mood: MoodKind; intensity: MoodIntensity; note: string }): void;
   removeFragment(id: string): void;
   getFragmentsByType<T extends FragmentType>(type: T): Extract<LabFragment, { type: T }>[];
+  toggleFavorite(id: string): void;
+  recordDraw(type: FragmentType, id: string): void;
+  clearRecentDraws(type?: FragmentType): void;
 };
 
 export type FragmentStore = FragmentState & FragmentActions;
@@ -47,10 +63,27 @@ function createFragmentId(type: FragmentType) {
   return `fragment_${type}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
+function defaultRecentDrawIds(): FragmentBucketState {
+  return {
+    inspiration: [],
+    mood: [],
+  };
+}
+
+function defaultLastDrawnId(): FragmentLastDrawnState {
+  return {
+    inspiration: null,
+    mood: null,
+  };
+}
+
 export const useFragmentStore = create<FragmentStore>()(
   persist(
     (set, get) => ({
       fragments: [],
+      favoriteIds: [],
+      recentDrawIds: defaultRecentDrawIds(),
+      lastDrawnId: defaultLastDrawnId(),
       addInspiration(input) {
         const content = input.content.trim();
         const id = createFragmentId('inspiration');
@@ -115,12 +148,83 @@ export const useFragmentStore = create<FragmentStore>()(
       getFragmentsByType(type) {
         return get().fragments.filter((x) => x.type === type) as Extract<LabFragment, { type: typeof type }>[];
       },
+      toggleFavorite(id) {
+        set((s) => ({
+          favoriteIds: s.favoriteIds.includes(id) ? s.favoriteIds.filter((itemId) => itemId !== id) : [id, ...s.favoriteIds],
+        }));
+      },
+      recordDraw(type, id) {
+        set((s) => {
+          const nextRecentIds = [id, ...s.recentDrawIds[type].filter((itemId) => itemId !== id)].slice(0, 10);
+          return {
+            recentDrawIds: {
+              ...s.recentDrawIds,
+              [type]: nextRecentIds,
+            },
+            lastDrawnId: {
+              ...s.lastDrawnId,
+              [type]: id,
+            },
+          };
+        });
+      },
+      clearRecentDraws(type) {
+        set((s) => {
+          if (!type) {
+            return {
+              recentDrawIds: defaultRecentDrawIds(),
+              lastDrawnId: defaultLastDrawnId(),
+            };
+          }
+
+          return {
+            recentDrawIds: {
+              ...s.recentDrawIds,
+              [type]: [],
+            },
+            lastDrawnId: {
+              ...s.lastDrawnId,
+              [type]: null,
+            },
+          };
+        });
+      },
     }),
     {
       name: 'lifeos.fragmentStore',
-      version: 1,
+      version: 2,
       storage: zustandStorage,
-      partialize: (s) => ({ fragments: s.fragments }),
+      partialize: (s) => ({
+        fragments: s.fragments,
+        favoriteIds: Array.from(new Set(s.favoriteIds)),
+        recentDrawIds: {
+          inspiration: s.recentDrawIds.inspiration.slice(0, 10),
+          mood: s.recentDrawIds.mood.slice(0, 10),
+        },
+        lastDrawnId: s.lastDrawnId,
+      }),
+      migrate: (persistedState: any) => {
+        const state = persistedState && typeof persistedState === 'object' ? persistedState : {};
+        const recentDrawIds = state.recentDrawIds && typeof state.recentDrawIds === 'object' ? state.recentDrawIds : {};
+        const lastDrawnId = state.lastDrawnId && typeof state.lastDrawnId === 'object' ? state.lastDrawnId : {};
+
+        return {
+          fragments: Array.isArray(state.fragments) ? state.fragments : [],
+          favoriteIds: Array.isArray(state.favoriteIds)
+            ? Array.from(new Set(state.favoriteIds.filter((id: unknown): id is string => typeof id === 'string')))
+            : [],
+          recentDrawIds: {
+            inspiration: Array.isArray(recentDrawIds.inspiration)
+              ? recentDrawIds.inspiration.filter((id: unknown): id is string => typeof id === 'string').slice(0, 10)
+              : [],
+            mood: Array.isArray(recentDrawIds.mood) ? recentDrawIds.mood.filter((id: unknown): id is string => typeof id === 'string').slice(0, 10) : [],
+          },
+          lastDrawnId: {
+            inspiration: typeof lastDrawnId.inspiration === 'string' ? lastDrawnId.inspiration : null,
+            mood: typeof lastDrawnId.mood === 'string' ? lastDrawnId.mood : null,
+          },
+        };
+      },
     }
   )
 );
