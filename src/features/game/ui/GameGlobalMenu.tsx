@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { router, useGlobalSearchParams, usePathname } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import { Alert, Animated, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -41,8 +41,15 @@ export function GameGlobalMenu() {
   const [attrsVisible, setAttrsVisible] = useState(false);
   const [saveVisible, setSaveVisible] = useState(false);
   const [sideDockOpen, setSideDockOpen] = useState(false);
+  const pathname = usePathname();
+  const routeParams = useGlobalSearchParams<{
+    from?: string | string[];
+    eventId?: string | string[];
+    locationId?: string | string[];
+  }>();
 
   const player = useGameStore((s) => s.player);
+  const currentEventId = useGameStore((s) => s.eventId);
   const gold = useWalletStore((s) => s.currencies.gold);
   const saveSlots = useGameStore((s) => s.saveSlots);
   const save = useGameStore((s) => s.save);
@@ -74,6 +81,37 @@ export function GameGlobalMenu() {
         onPress: () => load(slotId),
       },
     ]);
+  }
+
+  function openBag() {
+    setSideDockOpen(false);
+
+    if (pathname.endsWith('/map')) {
+      router.push({ pathname: '/(tabs)/game/bag', params: { from: 'map' } });
+      return;
+    }
+
+    if (pathname.endsWith('/shop')) {
+      const from = Array.isArray(routeParams.from) ? routeParams.from[0] : routeParams.from;
+      router.push({ pathname: '/(tabs)/game/bag', params: from === 'map' ? { from: 'shop', shopFrom: 'map' } : { from: 'shop' } });
+      return;
+    }
+
+    if (pathname.endsWith('/play')) {
+      const eventId = Array.isArray(routeParams.eventId) ? routeParams.eventId[0] : routeParams.eventId;
+      const locationId = Array.isArray(routeParams.locationId) ? routeParams.locationId[0] : routeParams.locationId;
+      router.push({
+        pathname: '/(tabs)/game/bag',
+        params: {
+          from: 'play',
+          eventId: eventId ?? currentEventId,
+          locationId: locationId ?? player.location ?? 'home',
+        },
+      });
+      return;
+    }
+
+    router.push({ pathname: '/(tabs)/game/bag', params: { from: 'home' } });
   }
 
   return (
@@ -144,10 +182,7 @@ export function GameGlobalMenu() {
             <ThemedText style={[styles.buttonLabel, { color: mutedText }]}>日志</ThemedText>
           </Pressable>
           <Pressable
-            onPress={() => {
-              setSideDockOpen(false);
-              router.push('/(tabs)/game/bag');
-            }}
+            onPress={openBag}
             style={({ pressed }) => [
               styles.button,
               { borderColor: cardBorder, backgroundColor: pressed ? 'rgba(209,187,222,0.22)' : 'rgba(209,187,222,0.10)' },

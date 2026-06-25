@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import React, { useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
@@ -41,11 +41,17 @@ export default function GameShopScreen() {
   const addItem = useInventoryStore((s) => s.addItem);
   const inventoryItems = useInventoryStore((s) => s.items);
   const player = useGameStore((s) => s.player);
+  const params = useLocalSearchParams<{ from?: string | string[] }>();
+  const from = Array.isArray(params.from) ? params.from[0] : params.from;
 
   const [selectedCategoryId, setSelectedCategoryId] = useState<ProductCategoryId>('daily');
   const selectedCategory = shopCategories.find((category) => category.id === selectedCategoryId) ?? shopCategories[0]!;
   const selectedCategoryUnlocked = isCategoryUnlocked(selectedCategory);
   const products = selectedCategoryUnlocked ? getProductsByCategory(selectedCategory.id) : [];
+
+  function goBack() {
+    router.replace(from === 'map' ? '/(tabs)/game/map' : '/(tabs)/game');
+  }
 
   function isCategoryUnlocked(category: ShopCategory) {
     if (category.unlocked) return true;
@@ -88,7 +94,7 @@ export default function GameShopScreen() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         <View style={styles.header}>
           <View style={styles.headerRow}>
-            <Pressable onPress={() => router.replace('/(tabs)/game')} style={({ pressed }) => [{ opacity: pressed ? 0.72 : 1 }]}>
+            <Pressable onPress={goBack} style={({ pressed }) => [{ opacity: pressed ? 0.72 : 1 }]}>
               <ThemedText style={[styles.backText, { color: mutedText }]}>返回</ThemedText>
             </Pressable>
             <View style={styles.headerTitleBlock}>
@@ -115,7 +121,7 @@ export default function GameShopScreen() {
         </View>
 
         <Pressable
-          onPress={() => router.push('/(tabs)/game/gacha')}
+          onPress={() => router.push({ pathname: '/(tabs)/game/gacha', params: from === 'map' ? { from: 'map' } : undefined })}
           style={({ pressed }) => [
             styles.gachaEntryCard,
             {

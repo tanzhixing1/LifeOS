@@ -52,7 +52,7 @@ export default function GameMapScreen() {
 
   function openShop(location: GameLocation) {
     if (!location.shopId) return;
-    router.push('/(tabs)/game/shop');
+    router.push({ pathname: '/(tabs)/game/shop', params: { from: 'map' } });
   }
 
   return (

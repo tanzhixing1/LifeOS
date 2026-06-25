@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import React, { useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
@@ -25,7 +25,13 @@ export default function GameGachaScreen() {
   const gold = useWalletStore((s) => s.currencies.gold);
   const spendCurrency = useWalletStore((s) => s.spendCurrency);
   const addItem = useInventoryStore((s) => s.addItem);
+  const params = useLocalSearchParams<{ from?: string | string[] }>();
+  const from = Array.isArray(params.from) ? params.from[0] : params.from;
   const [lastReward, setLastReward] = useState<GachaReward | null>(null);
+
+  function goBackToShop() {
+    router.replace({ pathname: SHOP_ROUTE, params: from === 'map' ? { from: 'map' } : undefined });
+  }
 
   const pool = fogberryLuckyBottlePool;
   const rewardItem = lastReward ? gameItems[lastReward.itemId] : undefined;
@@ -56,7 +62,7 @@ export default function GameGachaScreen() {
     <ThemedView style={[styles.screen, { backgroundColor: pageBg }]}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         <View style={styles.header}>
-          <Pressable onPress={() => router.replace(SHOP_ROUTE)} style={({ pressed }) => [{ opacity: pressed ? 0.72 : 1 }]}>
+          <Pressable onPress={goBackToShop} style={({ pressed }) => [{ opacity: pressed ? 0.72 : 1 }]}>
             <ThemedText style={[styles.backText, { color: mutedText }]}>返回商店</ThemedText>
           </Pressable>
 

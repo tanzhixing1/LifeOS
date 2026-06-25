@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import React, { useMemo, useState } from 'react';
 import { Alert, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
@@ -9,6 +9,7 @@ import { gameItems, type ItemType } from '@/features/game/content/main/items/ite
 import { canUseGameItem, consumeGameItem } from '@/features/game/items/useItem';
 import { canGiveGift, giveGiftToNpc } from '@/features/game/relationships/gifts';
 import { useThemeColor } from '@/hooks/use-theme-color';
+import { useGameStore } from '@/stores/gameStore';
 import { useInventoryStore } from '@/stores/inventoryStore';
 import { useRelationshipStore } from '@/stores/relationshipStore';
 
@@ -45,6 +46,14 @@ export default function GameBagScreen() {
 
   const items = useInventoryStore((s) => s.items);
   const relationships = useRelationshipStore((s) => s.relationships);
+  const eventId = useGameStore((s) => s.eventId);
+  const playerLocation = useGameStore((s) => s.player.location);
+  const params = useLocalSearchParams<{
+    from?: string | string[];
+    shopFrom?: string | string[];
+    eventId?: string | string[];
+    locationId?: string | string[];
+  }>();
   const [selectedFilterId, setSelectedFilterId] = useState<BagFilterId>('all');
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const stacks = useMemo(
@@ -73,6 +82,41 @@ export default function GameBagScreen() {
   const selectedIsGiftable = selectedItem?.type === 'gift' || selectedItem?.giftable === true;
   const selectedCanUse = selectedStack ? canUseGameItem(selectedStack.itemId) : false;
   const selectedCanGift = selectedStack ? canGiveGift(selectedStack.itemId) : false;
+  const from = Array.isArray(params.from) ? params.from[0] : params.from;
+  const shopFrom = Array.isArray(params.shopFrom) ? params.shopFrom[0] : params.shopFrom;
+  const returnEventId = Array.isArray(params.eventId) ? params.eventId[0] : params.eventId;
+  const returnLocationId = Array.isArray(params.locationId) ? params.locationId[0] : params.locationId;
+
+  function goBack() {
+    if (from === 'map') {
+      router.replace('/(tabs)/game/map');
+      return;
+    }
+
+    if (from === 'shop') {
+      router.replace({ pathname: '/(tabs)/game/shop', params: shopFrom === 'map' ? { from: 'map' } : undefined });
+      return;
+    }
+
+    if (from === 'play') {
+      const nextEventId = returnEventId || eventId;
+      const nextLocationId = returnLocationId || playerLocation || 'home';
+      router.replace(
+        `/(tabs)/game/play?mode=continue&eventId=${encodeURIComponent(nextEventId)}&locationId=${encodeURIComponent(nextLocationId)}`
+      );
+      return;
+    }
+
+    router.replace('/(tabs)/game');
+  }
+
+  function goShopFromEmptyBag() {
+    if (from === 'map') {
+      router.push({ pathname: '/(tabs)/game/shop', params: { from: 'map' } });
+      return;
+    }
+    router.push('/(tabs)/game/shop');
+  }
 
   function handleUseSelectedItem() {
     if (!selectedStack) return;
@@ -91,7 +135,7 @@ export default function GameBagScreen() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         <View style={styles.header}>
           <View style={styles.headerRow}>
-            <Pressable onPress={() => router.replace('/(tabs)/game')} style={({ pressed }) => [{ opacity: pressed ? 0.72 : 1 }]}>
+            <Pressable onPress={goBack} style={({ pressed }) => [{ opacity: pressed ? 0.72 : 1 }]}>
               <ThemedText style={[styles.backText, { color: mutedText }]}>返回</ThemedText>
             </Pressable>
             <View style={styles.headerTitleBlock}>
@@ -132,7 +176,7 @@ export default function GameBagScreen() {
             <ThemedText style={[styles.emptyTitle, { color: textColor }]}>背包还是空的。</ThemedText>
             <ThemedText style={[styles.emptyText, { color: mutedText }]}>去杂货铺采购点什么吧。</ThemedText>
             <Pressable
-              onPress={() => router.push('/(tabs)/game/shop')}
+              onPress={goShopFromEmptyBag}
               style={({ pressed }) => [
                 styles.shopButton,
                 {
