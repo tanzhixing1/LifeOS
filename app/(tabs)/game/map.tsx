@@ -1,14 +1,15 @@
 import { router } from 'expo-router';
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { mainContentPack, mainLocations, mainNpcs, mainNpcSchedules } from '@/features/game/content/main';
 import { evaluateCondition } from '@/features/game/engine/executor';
-import { getNpcsAtLocation } from '@/features/game/engine/npc';
+import { getDayOfWeek, getNpcDailyTimeline, getNpcPresencesAtLocation } from '@/features/game/engine/npc';
 import { formatGameTime, formatOpenHours, isLocationOpen } from '@/features/game/engine/time';
-import type { EventNode, GameLocation, PlayerState } from '@/features/game/engine/types';
+import type { EventNode, GameLocation, NpcPresence, PlayerState } from '@/features/game/engine/types';
+import { NpcProfileSheet } from '@/features/game/ui/NpcProfileSheet';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { useGameStore } from '@/stores';
 import { useWalletStore } from '@/stores/walletStore';
@@ -30,6 +31,14 @@ export default function GameMapScreen() {
   const markResumeMap = useGameStore((s) => s.markResumeMap);
   const markResumePlay = useGameStore((s) => s.markResumePlay);
   const locations = useMemo(() => mainLocations.filter((location) => isLocationUnlocked(location, player)), [player]);
+  const [selectedPresence, setSelectedPresence] = useState<NpcPresence | null>(null);
+  const dayOfWeek = getDayOfWeek(player.gameTime);
+  const selectedLocationName = selectedPresence
+    ? mainLocations.find((location) => location.id === selectedPresence.locationId)?.name ?? selectedPresence.locationId
+    : '';
+  const selectedDailyTimeline = selectedPresence
+    ? getNpcDailyTimeline(selectedPresence.npc.id, dayOfWeek, mainNpcSchedules)
+    : [];
 
   useEffect(() => {
     markResumeMap(useGameStore.getState().player.location);
@@ -110,11 +119,22 @@ export default function GameMapScreen() {
                 mutedText={mutedText}
                 onPress={() => enterLocation(location)}
                 onOpenShop={() => openShop(location)}
+                onPressNpc={setSelectedPresence}
               />
             ))}
           </View>
         </View>
       </ScrollView>
+
+      <NpcProfileSheet
+        visible={Boolean(selectedPresence)}
+        presence={selectedPresence}
+        currentLocationName={selectedLocationName}
+        dayOfWeek={dayOfWeek}
+        dailyTimeline={selectedDailyTimeline}
+        locations={mainLocations}
+        onClose={() => setSelectedPresence(null)}
+      />
     </ThemedView>
   );
 }
@@ -128,13 +148,15 @@ type LocationCardProps = {
   mutedText: string;
   onPress: () => void;
   onOpenShop: () => void;
+  onPressNpc: (presence: NpcPresence) => void;
 };
 
-function LocationCard({ location, isCurrent, player, accent, cardBorder, mutedText, onPress, onOpenShop }: LocationCardProps) {
+function LocationCard({ location, isCurrent, player, accent, cardBorder, mutedText, onPress, onOpenShop, onPressNpc }: LocationCardProps) {
   const open = isLocationOpen(location, player.gameTime);
   const hoursLabel = formatOpenHours(location.openHours);
-  const visibleNpcs = getNpcsAtLocation(location.id, player.gameTime, mainNpcs, mainNpcSchedules, mainLocations);
-  const visibleNpcNames = visibleNpcs.map((npc) => npc.name).join('、');
+  const visibleNpcPresences = getNpcPresencesAtLocation(location.id, player.gameTime, mainNpcs, mainNpcSchedules, mainLocations);
+  const visibleNpcChips = visibleNpcPresences.slice(0, 3);
+  const hiddenNpcCount = Math.max(0, visibleNpcPresences.length - visibleNpcChips.length);
   const hasShop = Boolean(location.shopId);
 
   return (
@@ -167,16 +189,40 @@ function LocationCard({ location, isCurrent, player, accent, cardBorder, mutedTe
         <ThemedText style={[styles.nodeSubtitle, { color: mutedText }]} numberOfLines={1}>
           {location.subtitle ?? ' '}
         </ThemedText>
-        {visibleNpcNames ? (
-          <ThemedText style={[styles.nodeNpc, { color: accent }]} numberOfLines={1}>
-            可遇见：{visibleNpcNames}
-          </ThemedText>
-        ) : null}
         <ThemedText style={[styles.nodeHours, { color: mutedText }]} numberOfLines={1}>
           {hoursLabel ?? '全天开放'}
         </ThemedText>
         {isCurrent ? <ThemedText style={[styles.nodeCurrent, { color: accent }]}>当前位置</ThemedText> : null}
       </Pressable>
+
+      {visibleNpcChips.length > 0 ? (
+        <View style={styles.npcSection}>
+          <ThemedText style={[styles.npcSectionTitle, { color: mutedText }]}>可遇见</ThemedText>
+          <View style={styles.npcChipRow}>
+            {visibleNpcChips.map((presence) => (
+              <Pressable
+                key={presence.npc.id}
+                onPress={() => onPressNpc(presence)}
+                style={({ pressed }) => [
+                  styles.npcChip,
+                  {
+                    borderColor: accent,
+                    backgroundColor: pressed ? 'rgba(209,187,222,0.24)' : 'rgba(209,187,222,0.12)',
+                  },
+                ]}>
+                <ThemedText style={[styles.npcChipName, { color: accent }]} numberOfLines={1}>
+                  {presence.npc.name}
+                </ThemedText>
+              </Pressable>
+            ))}
+            {hiddenNpcCount > 0 ? (
+              <View style={[styles.npcMoreChip, { borderColor: cardBorder }]}>
+                <ThemedText style={[styles.npcMoreText, { color: mutedText }]}>+{hiddenNpcCount}</ThemedText>
+              </View>
+            ) : null}
+          </View>
+        </View>
+      ) : null}
 
       {hasShop ? (
         <View style={styles.shopEntrySection}>
@@ -251,9 +297,31 @@ const styles = StyleSheet.create({
   nodeStatusText: { fontSize: 10, lineHeight: 12, fontWeight: '900' },
   nodeName: { fontSize: 15, lineHeight: 19, fontWeight: '900' },
   nodeSubtitle: { fontSize: 11, lineHeight: 15, fontWeight: '800' },
-  nodeNpc: { fontSize: 10, lineHeight: 13, fontWeight: '900' },
   nodeHours: { fontSize: 10, lineHeight: 13, fontWeight: '800' },
   nodeCurrent: { fontSize: 10, lineHeight: 13, fontWeight: '900' },
+  npcSection: { gap: 6 },
+  npcSectionTitle: { fontSize: 10, lineHeight: 13, fontWeight: '900' },
+  npcChipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  npcChip: {
+    minHeight: 26,
+    maxWidth: '100%',
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    justifyContent: 'center',
+  },
+  npcChipName: { fontSize: 11, lineHeight: 14, fontWeight: '900' },
+  npcMoreChip: {
+    minHeight: 26,
+    alignSelf: 'flex-start',
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    justifyContent: 'center',
+  },
+  npcMoreText: { fontSize: 10, lineHeight: 13, fontWeight: '900' },
   shopEntrySection: { gap: 6, paddingTop: 2 },
   shopHint: { fontSize: 10, lineHeight: 13, fontWeight: '800' },
   shopEntryButton: {

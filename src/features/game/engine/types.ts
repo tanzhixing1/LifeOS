@@ -38,18 +38,37 @@ export type GameNpc = {
   id: string;
   name: string;
   role?: string;
+  ageLabel?: string;
+  pronouns?: string;
   description: string;
   personalityTags?: string[];
+  homeLocationId?: string;
+  defaultLocationId?: string;
+  likes?: string[];
+  dislikes?: string[];
+  dailyNote?: string;
 };
+
+export type NpcScheduleRepeat = 'daily' | 'weekly';
 
 export type NpcScheduleBlock = {
   npcId: string;
   locationId: string;
+  repeat?: NpcScheduleRepeat;
+  weekdays?: number[];
   startHour: number;
   startMinute?: number;
   endHour: number;
   endMinute?: number;
   activity?: string;
+  priority?: number;
+};
+
+export type NpcPresence = {
+  npc: GameNpc;
+  locationId: string;
+  activity: string;
+  schedule: NpcScheduleBlock;
 };
 
 export type NpcLocationEncounter = {
